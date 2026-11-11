@@ -1,0 +1,22 @@
+{
+  "version": {
+    "must_contain": [
+      "jcode",
+      "jcode --version"
+    ],
+    "must_not_contain": [
+      "panic",
+      "thread 'main' panicked"
+    ]
+  },
+  "help": {
+    "must_contain": [
+      "Usage:",
+      "Commands:"
+    ],
+    "must_not_contain": [
+      "panic",
+      "thread 'main' panicked"
+    ]
+  }
+}

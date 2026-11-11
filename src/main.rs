@@ -242,4 +242,38 @@ mod tests {
             None
         );
     }
+
+    fn jcode_binary() -> std::path::PathBuf {
+        std::env::var("CARGO_BIN_EXE_jcode")
+            .or_else(|_| std::env::var("JCODE_BIN_PATH"))
+            .unwrap_or_else(|_| {
+                let mut path = std::env::current_dir().expect("current dir");
+                path.push("target/debug/jcode");
+                path.to_string_lossy().into_owned()
+            })
+            .into()
+    }
+
+    #[test]
+    fn version_prints_stable_output() {
+        let output = std::process::Command::new(jcode_binary())
+            .args(["--version"])
+            .output()
+            .expect("spawn jcode --version");
+        assert!(output.status.success(), "jcode --version failed: {output:?}");
+        let text = String::from_utf8_lossy(&output.stdout);
+        assert!(text.contains("jcode v"), "version prefix missing: {text}");
+    }
+
+    #[test]
+    fn help_shows_usage_and_commands() {
+        let output = std::process::Command::new(jcode_binary())
+            .args(["--help"])
+            .output()
+            .expect("spawn jcode --help");
+        assert!(output.status.success(), "jcode --help failed: {output:?}");
+        let text = String::from_utf8_lossy(&output.stdout);
+        assert!(text.contains("Usage:"), "missing Usage: in help: {text}");
+        assert!(text.contains("Commands:"), "missing Commands: in help: {text}");
+    }
 }
