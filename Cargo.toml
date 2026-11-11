@@ -5,6 +5,8 @@ description = "Possibly the greatest coding agent ever built — blazing-fast TU
 edition = "2024"
 autobins = false
 
+resolver = "2"
+
 [workspace]
 members = [
     ".",
@@ -38,6 +40,7 @@ members = [
     "crates/jcode-overnight-core",
     "crates/jcode-plan",
     "crates/jcode-productivity-core",
+    "crates/jcode-swarm",
     "crates/jcode-swarm-core",
     "crates/jcode-protocol",
     "crates/jcode-selfdev-types",
