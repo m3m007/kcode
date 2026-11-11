@@ -12,6 +12,7 @@ members = [
     "crates/jcode-app-core",
     "crates/jcode-docs-data",
     "crates/jcode-base",
+    "crates/jcode-enforcement",
     "crates/jcode-tui",
     "crates/jcode-build-meta",
     "crates/jcode-ambient-types",
