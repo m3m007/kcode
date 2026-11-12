@@ -41,7 +41,7 @@ pub(crate) enum CloudEphemeralCommand {
     Attach {
         id: String,
         /// Exact remote Jcode binary to use.
-        #[arg(long, default_value = "/opt/jcode-cloud/jcode")]
+        #[arg(long, default_value = "/opt/kcode-cloud/kcode")]
         remote_binary: String,
         #[arg(long)]
         workdir: Option<String>,
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn ephemeral_cli_enforces_ttl_and_destructive_confirmation() {
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "ephemeral",
             "create",
@@ -92,7 +92,7 @@ mod tests {
         ));
         for args in [
             vec![
-                "jcode",
+                "kcode",
                 "cloud",
                 "ephemeral",
                 "create",
@@ -100,7 +100,7 @@ mod tests {
                 "299",
             ],
             vec![
-                "jcode",
+                "kcode",
                 "cloud",
                 "ephemeral",
                 "create",
@@ -108,7 +108,7 @@ mod tests {
                 "86401",
             ],
             vec![
-                "jcode",
+                "kcode",
                 "cloud",
                 "ephemeral",
                 "terminate",
@@ -118,7 +118,7 @@ mod tests {
             assert!(Args::try_parse_from(args).is_err());
         }
         Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "ephemeral",
             "terminate",
@@ -132,7 +132,7 @@ mod tests {
     fn ephemeral_attach_and_exec_do_not_steal_global_flags() {
         let id = "cm_0123456789abcdef0123456789abcdef";
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "ephemeral",
             "attach",
@@ -144,7 +144,7 @@ mod tests {
             "--session",
             "test",
             "--remote-binary",
-            "/opt/bench/jcode",
+            "/opt/bench/kcode",
         ])
         .unwrap();
         assert!(matches!(
@@ -159,7 +159,7 @@ mod tests {
             }))
         ));
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "ephemeral",
             "exec",

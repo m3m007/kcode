@@ -4,7 +4,7 @@
 set -euo pipefail
 [[ $# == 0 ]] || { echo 'usage: install_justrust_hosted_ci.sh' >&2; exit 1; }
 readonly revision=5c8c6e653d1874923cf94b93dd96aa3d312343f0
-work=$(mktemp -d "${RUNNER_TEMP:-${JCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}}/justrust-hosted-client.XXXXXX")
+work=$(mktemp -d "${RUNNER_TEMP:-${KCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}}/justrust-hosted-client.XXXXXX")
 # Keep the installed binary until the job ends. Source excludes the vendored
 # compiler, server and any user configuration. No credentials are needed here.
 git init -q "$work/source"

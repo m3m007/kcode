@@ -3,10 +3,10 @@
 Status: active guardrail
 Updated: 2026-04-18
 
-This document defines the current memory regression budget for jcode.
+This document defines the current memory regression budget for kcode.
 
 For live server triage and cause-specific remediation, see
-[Jcode Server Memory Incident Runbook](./MEMORY_INCIDENT_RUNBOOK.md).
+[Kcode Server Memory Incident Runbook](./MEMORY_INCIDENT_RUNBOOK.md).
 
 For idle-session cache reclamation, its configuration, measured RAM indicator,
 and retained-state boundaries, see [Session Hibernation](./SESSION_HIBERNATION.md).

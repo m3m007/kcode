@@ -1,6 +1,6 @@
 # Kagi web search
 
-Use Kagi's Search API as the built-in `websearch` backend in `~/.jcode/config.toml`:
+Use Kagi's Search API as the built-in `websearch` backend in `~/.kcode/config.toml`:
 
 ```toml
 [websearch]
@@ -10,7 +10,7 @@ fallback_engines = []
 kagi_api_key_env = "KAGI_API_KEY"
 ```
 
-Set `KAGI_API_KEY` in the environment of the Jcode server process to your Kagi API
+Set `KAGI_API_KEY` in the environment of the Kcode server process to your Kagi API
 key, without an authentication prefix. You can change `kagi_api_key_env` to name
 another variable. Keep the key out of the config file and chat. An already-running
 server needs to be restarted from an environment containing the key.
@@ -18,7 +18,7 @@ server needs to be restarted from an environment containing the key.
 Kagi API searches incur charges. Selecting Kagi is opt-in and doesn't change the
 existing defaults. `prefer_native` still defaults to true, so set it to false to
 prevent supported model providers from replacing the local backend with their own
-hosted search. `JCODE_WEBSEARCH_ENGINE=kagi` also selects Kagi, but doesn't disable
+hosted search. `KCODE_WEBSEARCH_ENGINE=kagi` also selects Kagi, but doesn't disable
 native search by itself.
 
 Errors and empty results try `fallback_engines` in order. The default fallback is
@@ -27,7 +27,7 @@ as a fallback, where each attempted Kagi search may incur a charge.
 
 ## API behavior
 
-Jcode sends `POST https://kagi.com/api/v1/search` with a sensitive
+Kcode sends `POST https://kagi.com/api/v1/search` with a sensitive
 `Authorization: Bearer` header and a JSON body containing `query`,
 `workflow = "search"`, and `limit`. It reads web results from `data.search`,
 returning each result's title, URL, and snippet in the usual search output.

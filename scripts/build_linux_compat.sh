@@ -17,10 +17,10 @@ if [[ "$out_dir" != /* ]]; then
   out_dir="$repo_root/$out_dir"
 fi
 
-artifact="${JCODE_COMPAT_ARTIFACT:-jcode-linux-x86_64}"
-profile="${JCODE_COMPAT_PROFILE:-release}"
-image="${JCODE_COMPAT_IMAGE:-quay.io/pypa/manylinux2014_x86_64}"
-cache_root="${JCODE_COMPAT_CACHE_DIR:-$HOME/.cache/jcode-linux-compat}"
+artifact="${KCODE_COMPAT_ARTIFACT:-kcode-linux-x86_64}"
+profile="${KCODE_COMPAT_PROFILE:-release}"
+image="${KCODE_COMPAT_IMAGE:-quay.io/pypa/manylinux2014_x86_64}"
+cache_root="${KCODE_COMPAT_CACHE_DIR:-$HOME/.cache/kcode-linux-compat}"
 target="x86_64-unknown-linux-gnu"
 
 mkdir -p "$out_dir" \
@@ -32,8 +32,8 @@ host_uid="$(id -u)"
 host_gid="$(id -g)"
 
 # Compute git build metadata on the HOST and hand it to the container via a
-# metadata file (read by jcode-build-meta/build.rs through
-# JCODE_BUILD_METADATA_FILE). The repo is bind-mounted into the container and
+# metadata file (read by kcode-build-meta/build.rs through
+# KCODE_BUILD_METADATA_FILE). The repo is bind-mounted into the container and
 # owned by the host UID while git inside the container runs as root, so any
 # in-container `git` call trips git's "dubious ownership" guard
 # (CVE-2022-24765) and fails. That previously zeroed out the embedded git hash,
@@ -65,7 +65,7 @@ trap 'rm -f "$metadata_file"' EXIT
   printf 'git_date=%s\n' "$git_date"
   printf 'git_tag=%s\n' "$git_tag"
   printf 'git_dirty=%s\n' "$git_dirty"
-  printf 'changelog_raw<<JCODE_CHANGELOG_EOF\n%s\nJCODE_CHANGELOG_EOF\n' "$changelog_raw"
+  printf 'changelog_raw<<KCODE_CHANGELOG_EOF\n%s\nKCODE_CHANGELOG_EOF\n' "$changelog_raw"
 } > "$metadata_file"
 
 echo "Building portable Linux release in Docker image: $image"
@@ -76,20 +76,20 @@ docker run --rm \
   -e CARGO_TERM_COLOR=always \
   -e CARGO_PROFILE_RELEASE_OPT_LEVEL \
   -e CARGO_BUILD_JOBS \
-  -e JCODE_CI_BUILD \
-  -e JCODE_RELEASE_BUILD="${JCODE_RELEASE_BUILD:-1}" \
-  -e JCODE_BUILD_SEMVER="${JCODE_BUILD_SEMVER:-}" \
-  -e JCODE_BUILD_METADATA_FILE=/jcode-build-meta \
-  -e JCODE_BUILD_GIT_HASH="$git_hash" \
-  -e JCODE_BUILD_GIT_DATE="$git_date" \
-  -e JCODE_BUILD_GIT_TAG="$git_tag" \
-  -e JCODE_BUILD_GIT_DIRTY="$git_dirty" \
-  -e JCODE_COMPAT_PROFILE="$profile" \
-  -e JCODE_COMPAT_TARGET="$target" \
+  -e KCODE_CI_BUILD \
+  -e KCODE_RELEASE_BUILD="${KCODE_RELEASE_BUILD:-1}" \
+  -e KCODE_BUILD_SEMVER="${KCODE_BUILD_SEMVER:-}" \
+  -e KCODE_BUILD_METADATA_FILE=/kcode-build-meta \
+  -e KCODE_BUILD_GIT_HASH="$git_hash" \
+  -e KCODE_BUILD_GIT_DATE="$git_date" \
+  -e KCODE_BUILD_GIT_TAG="$git_tag" \
+  -e KCODE_BUILD_GIT_DIRTY="$git_dirty" \
+  -e KCODE_COMPAT_PROFILE="$profile" \
+  -e KCODE_COMPAT_TARGET="$target" \
   -e HOST_UID="$host_uid" \
   -e HOST_GID="$host_gid" \
   -v "$repo_root:/work" \
-  -v "$metadata_file:/jcode-build-meta:ro" \
+  -v "$metadata_file:/kcode-build-meta:ro" \
   -v "$out_dir:/out" \
   -v "$cache_root/cargo-registry:/root/.cargo/registry" \
   -v "$cache_root/cargo-git:/root/.cargo/git" \
@@ -139,7 +139,7 @@ docker run --rm \
 	    source /root/.cargo/env
 
 	    # Belt-and-suspenders: the host-computed metadata file
-	    # (JCODE_BUILD_METADATA_FILE=/jcode-build-meta) is the primary source of
+	    # (KCODE_BUILD_METADATA_FILE=/kcode-build-meta) is the primary source of
 	    # git hash/date/changelog, but mark the bind-mounted repo as a safe
 	    # directory so any in-container git fallback still works despite the
 	    # host-UID/root-git ownership mismatch (CVE-2022-24765 guard).
@@ -149,7 +149,7 @@ docker run --rm \
 	    export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 	    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="${CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS:--C link-arg=-static-libgcc}"
 	    build_command=(cargo build)
-	    if [[ "${JCODE_CI_BUILD:-0}" == 1 ]]; then
+	    if [[ "${KCODE_CI_BUILD:-0}" == 1 ]]; then
 	      # Hosted Ubuntu cannot produce our glibc 2.17 baseline yet. Run the
 	      # static justrust client inside the existing manylinux2014 container.
 	      export JUSTRUST_TOOLCHAIN=system JUSTRUST_SLOTS=0 JUSTRUST_NO_TELEMETRY=1
@@ -158,12 +158,12 @@ docker run --rm \
 	      export PATH="$JUSTRUST_INSTALL_DIR:$PATH"
 	      build_command=(justrust build --local)
 	    fi
-	    "${build_command[@]}" --locked --profile "$JCODE_COMPAT_PROFILE" --target "$JCODE_COMPAT_TARGET" \
-	      -p jcode --bin jcode --features linux-compat-vendored-openssl
+	    "${build_command[@]}" --locked --profile "$KCODE_COMPAT_PROFILE" --target "$KCODE_COMPAT_TARGET" \
+	      -p kcode --bin kcode --features linux-compat-vendored-openssl
 
         # Exercise the exact portable binary before packaging. Cloud upgrades
         # must not publish an artifact that cannot complete the handoff protocol.
-        built="$CARGO_TARGET_DIR/$JCODE_COMPAT_TARGET/$JCODE_COMPAT_PROFILE/jcode"
+        built="$CARGO_TARGET_DIR/$KCODE_COMPAT_TARGET/$KCODE_COMPAT_PROFILE/kcode"
         "$built" --no-update --no-selfdev --version
         for command in receive credentials router-credentials cancel-return; do
           "$built" --no-update --no-selfdev cloud "$command" --help >/dev/null
@@ -176,7 +176,7 @@ docker run --rm \
           exit 1
         fi
 
-	    cp "$CARGO_TARGET_DIR/$JCODE_COMPAT_TARGET/$JCODE_COMPAT_PROFILE/jcode" "/out/'"$artifact"'.bin"
+	    cp "$CARGO_TARGET_DIR/$KCODE_COMPAT_TARGET/$KCODE_COMPAT_PROFILE/kcode" "/out/'"$artifact"'.bin"
 	    chmod +x "/out/'"$artifact"'.bin"
 	    cat > "/out/'"$artifact"'" <<WRAPPER
 #!/usr/bin/env sh
@@ -204,7 +204,7 @@ WRAPPER
 	    # Preserve the OpenSSL runtime libraries used by the build image. Some
 	    # Terminal-Bench containers are older than the build host and either lack
 	    # libssl entirely or expose a different SONAME. The Harbor adapter uploads
-	    # these sibling libraries and sets LD_LIBRARY_PATH for the jcode process.
+	    # these sibling libraries and sets LD_LIBRARY_PATH for the kcode process.
 	    ldd "/out/'"$artifact"'.bin" \
 	      | awk "/lib(ssl|crypto)[.]so/ { print \$3 }" \
 	      | while read -r lib; do
@@ -252,7 +252,7 @@ echo "Built artifacts:"
 ls -lh "$out_dir/$artifact" "$out_dir/$artifact.tar.gz"
 
 # Fail closed when the embedded hash does not match the tree that was built.
-# `jcode-build-meta`'s build script deliberately does not watch .git/HEAD, so a
+# `kcode-build-meta`'s build script deliberately does not watch .git/HEAD, so a
 # cached build dir can silently embed a previous commit's hash (observed: an
 # artifact built at 268913473 reporting c9ccb4f01). Provenance that is wrong is
 # worse than provenance that is missing.
@@ -263,7 +263,7 @@ if [[ -n "$git_hash" ]]; then
     | awk -F'\t' '$1 == "version" { print $2 }')"
   if [[ -n "$embedded" && "$embedded" != *"$git_hash"* ]]; then
     echo "error: embedded build metadata reports '$embedded' but the tree is at '$git_hash'" >&2
-    echo "       (stale build cache; re-run after 'cargo clean' or bump JCODE_BUILD_GIT_HASH)" >&2
+    echo "       (stale build cache; re-run after 'cargo clean' or bump KCODE_BUILD_GIT_HASH)" >&2
     exit 1
   fi
 fi

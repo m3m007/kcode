@@ -26,8 +26,8 @@ be interpreted as equivalent end-to-end input-to-results improvements.
 ## Reproduce
 
 ```bash
-justrust test -p jcode-tui --lib session_picker
-justrust test -p jcode-tui --lib benchmark_reusable_transcript_search -- --ignored --nocapture
+justrust test -p kcode-tui --lib session_picker
+justrust test -p kcode-tui --lib benchmark_reusable_transcript_search -- --ignored --nocapture
 ```
 
 The manual benchmark uses a temporary approximately 730 KiB JSONL transcript with
@@ -72,12 +72,12 @@ All 259 picker regressions passed (16 manual tests ignored), hosted run
 `20261102-184625828-2771103`. Coverage includes value-only parsing, malformed
 records and snapshot streams, reuse across search instances, changed/deleted
 files, same-length same-mtime inode replacement on Unix, cancellation, eviction,
-and oversized-file/decoded-text fallback. Hosted `check -p jcode-tui --tests`
+and oversized-file/decoded-text fallback. Hosted `check -p kcode-tui --tests`
 also passed. This is source-level and worker-interface validation, not a claim
 that a particular installed TUI or shared daemon has already been updated.
 
 Strict Clippy was attempted but is not green: the dependency-inclusive run
-stopped on an existing redundant closure in `jcode-base/src/gateway.rs`, and
+stopped on an existing redundant closure in `kcode-base/src/gateway.rs`, and
 the `--no-deps` run reported existing unused items, collapsible conditionals,
 and test-style findings elsewhere in the TUI. Neither reported a new cache
 implementation diagnostic. Unrelated lint cleanup was deliberately excluded.

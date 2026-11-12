@@ -50,9 +50,9 @@ through `build_preview_linux_hosted.sh` unchanged.
 
 The x86 caller only copies and archives the ARM executable. It must not execute
 it. After all six matrix archives upload, `native-arm-runtime` runs on
-`ubuntu-24.04-arm` and downloads `preview-jcode-linux-aarch64` from the same
+`ubuntu-24.04-arm` and downloads `preview-kcode-linux-aarch64` from the same
 workflow run. `verify_preview_arm_runtime.py` accepts exactly the one executable
-`jcode-linux-aarch64` archive member, rejects links, unsafe paths and non-AArch64
+`kcode-linux-aarch64` archive member, rejects links, unsafe paths and non-AArch64
 ELF files, then runs those exact extracted bytes. It requires the explicit
 preview version identity and successful `cloud receive`, `credentials`,
 `router-credentials` and `cancel-return` help checks, all with updates and

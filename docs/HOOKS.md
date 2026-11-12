@@ -1,22 +1,22 @@
 # Lifecycle Hooks
 
-jcode can run external commands at well-defined lifecycle points so other
-programs can observe or gate agent behavior without forking jcode. Hooks
+kcode can run external commands at well-defined lifecycle points so other
+programs can observe or gate agent behavior without forking kcode. Hooks
 complement the [spawn hook](SPAWN_HOOK.md) (which controls *where headed
 sessions appear*); lifecycle hooks tell you *what is happening inside them*.
 
 ## Configuration
 
 ```toml
-# ~/.jcode/config.toml
+# ~/.kcode/config.toml
 [hooks]
-turn_start    = "~/bin/jcode-turn-busy"       # observer
-turn_end      = "~/bin/jcode-turn-notify"     # observer
+turn_start    = "~/bin/kcode-turn-busy"       # observer
+turn_end      = "~/bin/kcode-turn-notify"     # observer
 session_start = ""                            # observer
 session_end   = ""                            # observer
-pre_tool      = "~/bin/jcode-tool-policy"     # gate
+pre_tool      = "~/bin/kcode-tool-policy"     # gate
 post_tool     = ""                            # observer
-post_tool_feedback = "~/bin/jcode-vale"       # feeds output back to the model
+post_tool_feedback = "~/bin/kcode-vale"       # feeds output back to the model
 pre_tool_timeout_ms = 5000
 post_tool_feedback_timeout_ms = 10000
 ```
@@ -28,8 +28,8 @@ Independent plugins can share an event without a dispatcher:
 
 ```toml
 [hooks]
-turn_end = ["~/bin/jcode-turn-notify", "~/bin/jcode-event-log"]
-pre_tool = ["~/bin/jcode-tool-policy", "~/bin/jcode-audit-policy"]
+turn_end = ["~/bin/kcode-turn-notify", "~/bin/kcode-event-log"]
+pre_tool = ["~/bin/kcode-tool-policy", "~/bin/kcode-audit-policy"]
 ```
 
 Empty or whitespace-only commands are skipped. Observer commands are spawned
@@ -39,12 +39,12 @@ the first blocking result is returned. Transformers and feedback hooks also
 run sequentially in declaration order, as described below.
 
 Env overrides (always win; empty value disables a config hook):
-`JCODE_HOOK_TURN_START`, `JCODE_HOOK_TURN_END`, `JCODE_HOOK_SESSION_START`, `JCODE_HOOK_SESSION_END`,
-`JCODE_HOOK_PRE_TOOL`, `JCODE_HOOK_POST_TOOL`, `JCODE_HOOK_PRE_TOOL_TIMEOUT_MS`,
-`JCODE_HOOK_POST_TOOL_FEEDBACK`, `JCODE_HOOK_POST_TOOL_FEEDBACK_TIMEOUT_MS`,
-`JCODE_HOOK_PRE_TOOL_TRANSFORM`, `JCODE_HOOK_PRE_TOOL_TRANSFORM_TIMEOUT_MS`.
+`KCODE_HOOK_TURN_START`, `KCODE_HOOK_TURN_END`, `KCODE_HOOK_SESSION_START`, `KCODE_HOOK_SESSION_END`,
+`KCODE_HOOK_PRE_TOOL`, `KCODE_HOOK_POST_TOOL`, `KCODE_HOOK_PRE_TOOL_TIMEOUT_MS`,
+`KCODE_HOOK_POST_TOOL_FEEDBACK`, `KCODE_HOOK_POST_TOOL_FEEDBACK_TIMEOUT_MS`,
+`KCODE_HOOK_PRE_TOOL_TRANSFORM`, `KCODE_HOOK_PRE_TOOL_TRANSFORM_TIMEOUT_MS`.
 Command overrides accept a command string or a TOML array of strings, for
-example `JCODE_HOOK_TURN_END='["notify-one", "notify-two"]'`.
+example `KCODE_HOOK_TURN_END='["notify-one", "notify-two"]'`.
 
 ## Common contract
 
@@ -56,11 +56,11 @@ example `JCODE_HOOK_TURN_END='["notify-one", "notify-two"]'`.
 
 | Variable | Meaning |
 | --- | --- |
-| `JCODE_HOOK_EVENT` | `turn_start`, `turn_end`, `session_start`, `session_end`, `pre_tool`, `post_tool`, `post_tool_feedback`, `pre_tool_transform` |
-| `JCODE_HOOK_SESSION_ID` | Session the event belongs to |
-| `JCODE_HOOK_CWD` | Session working directory |
-| `JCODE_HOOK_PAYLOAD` | JSON object mirroring all fields (capped at 16 KB) |
-| `JCODE_HOOKS_DISABLED` | Always `1`; suppresses hooks in nested jcode calls (recursion guard) |
+| `KCODE_HOOK_EVENT` | `turn_start`, `turn_end`, `session_start`, `session_end`, `pre_tool`, `post_tool`, `post_tool_feedback`, `pre_tool_transform` |
+| `KCODE_HOOK_SESSION_ID` | Session the event belongs to |
+| `KCODE_HOOK_CWD` | Session working directory |
+| `KCODE_HOOK_PAYLOAD` | JSON object mirroring all fields (capped at 16 KB) |
+| `KCODE_HOOKS_DISABLED` | Always `1`; suppresses hooks in nested kcode calls (recursion guard) |
 
 ## Observer hooks
 
@@ -72,7 +72,7 @@ their completion; failures are only logged.
 
 Fires before model generation and the first tool call in the `chat` entrypoint
 (which uses the streaming turn loop) and one-shot `run` path. Extra fields:
-`JCODE_HOOK_MODEL` and `JCODE_HOOK_SOURCE` (`chat` or `run`, respectively).
+`KCODE_HOOK_MODEL` and `KCODE_HOOK_SOURCE` (`chat` or `run`, respectively).
 
 There are no distinct `resume` or `ambient` source values dispatched by the
 current implementation. Those labels in older config comments are not a
@@ -81,14 +81,14 @@ runtime guarantee.
 ### `turn_end`
 
 Fires when an agent turn completes (streaming turn path, which covers TUI,
-desktop, swarm workers, and headless sessions, plus one-shot `jcode run`).
+desktop, swarm workers, and headless sessions, plus one-shot `kcode run`).
 
-Extra fields: `JCODE_HOOK_STATUS` (`ok`/`error`), `JCODE_HOOK_DURATION_MS`,
-`JCODE_HOOK_MODEL`, `JCODE_HOOK_LAST_ASSISTANT_TEXT` (first 4000 chars),
-`JCODE_HOOK_PROMPT_TOKENS`, `JCODE_HOOK_INPUT_TOKENS`,
-`JCODE_HOOK_OUTPUT_TOKENS`, `JCODE_HOOK_CACHE_READ_TOKENS`,
-`JCODE_HOOK_CACHE_WRITE_TOKENS`, and
-`JCODE_HOOK_ERROR` (on failure).
+Extra fields: `KCODE_HOOK_STATUS` (`ok`/`error`), `KCODE_HOOK_DURATION_MS`,
+`KCODE_HOOK_MODEL`, `KCODE_HOOK_LAST_ASSISTANT_TEXT` (first 4000 chars),
+`KCODE_HOOK_PROMPT_TOKENS`, `KCODE_HOOK_INPUT_TOKENS`,
+`KCODE_HOOK_OUTPUT_TOKENS`, `KCODE_HOOK_CACHE_READ_TOKENS`,
+`KCODE_HOOK_CACHE_WRITE_TOKENS`, and
+`KCODE_HOOK_ERROR` (on failure).
 
 Token fields are summed from assistant messages in the current turn. `PROMPT_TOKENS` is the provider-reported full prompt size when available; `INPUT_TOKENS` is the raw provider-reported input count.
 These values are not normalized across providers; for example, cached input may be included in the OpenAI input count
@@ -98,9 +98,9 @@ assistant message in the turn reports that metric.
 ### `session_start` / `session_end`
 
 `session_start` fires when an agent session becomes active, with
-`JCODE_HOOK_SOURCE` = `create` (brand new), `attach` (existing session object
+`KCODE_HOOK_SOURCE` = `create` (brand new), `attach` (existing session object
 attached), or `resume` (restored by id). `session_end` fires on normal close
-(`JCODE_HOOK_SOURCE=close`).
+(`KCODE_HOOK_SOURCE=close`).
 
 ### `post_tool`
 
@@ -108,16 +108,16 @@ Fires after every tool call. Extra fields:
 
 | Variable | Meaning |
 | --- | --- |
-| `JCODE_HOOK_TOOL_NAME` | Resolved tool name |
-| `JCODE_HOOK_TOOL_CALL_ID` | Provider tool call id |
-| `JCODE_HOOK_TOOL_INPUT` | Tool input JSON (capped at 16 KB) |
-| `JCODE_HOOK_TOUCHED_PATHS` | Newline-separated absolute paths named by the input (`file_path`, `path`, `paths`, `apply_patch` headers, ...) |
-| `JCODE_HOOK_STATUS` | `ok` / `error` |
-| `JCODE_HOOK_DURATION_MS` | Tool execution time |
-| `JCODE_HOOK_OUTPUT_BYTES` | Output size (on success) |
-| `JCODE_HOOK_ERROR` | Error message (on failure) |
+| `KCODE_HOOK_TOOL_NAME` | Resolved tool name |
+| `KCODE_HOOK_TOOL_CALL_ID` | Provider tool call id |
+| `KCODE_HOOK_TOOL_INPUT` | Tool input JSON (capped at 16 KB) |
+| `KCODE_HOOK_TOUCHED_PATHS` | Newline-separated absolute paths named by the input (`file_path`, `path`, `paths`, `apply_patch` headers, ...) |
+| `KCODE_HOOK_STATUS` | `ok` / `error` |
+| `KCODE_HOOK_DURATION_MS` | Tool execution time |
+| `KCODE_HOOK_OUTPUT_BYTES` | Output size (on success) |
+| `KCODE_HOOK_ERROR` | Error message (on failure) |
 
-`JCODE_HOOK_TOUCHED_PATHS` is derived from the tool input, so it lists paths a
+`KCODE_HOOK_TOUCHED_PATHS` is derived from the tool input, so it lists paths a
 tool was asked to read or write. It does not track files a `bash` command
 happened to modify.
 
@@ -140,8 +140,8 @@ Keep it fast and filter early: it runs on every tool call, including reads.
 
 ```bash
 #!/usr/bin/env bash
-# ~/bin/jcode-vale: lint prose the agent just wrote
-case "$JCODE_HOOK_TOOL_NAME" in
+# ~/bin/kcode-vale: lint prose the agent just wrote
+case "$KCODE_HOOK_TOOL_NAME" in
   write|edit|multiedit|apply_patch) ;;
   *) exit 0 ;;
 esac
@@ -149,7 +149,7 @@ while IFS= read -r path; do
   case "$path" in
     *.md|*.mdx|*.txt|*.rst) [ -f "$path" ] && vale --output=line "$path" ;;
   esac
-done <<<"$JCODE_HOOK_TOUCHED_PATHS"
+done <<<"$KCODE_HOOK_TOUCHED_PATHS"
 exit 0
 ```
 
@@ -157,8 +157,8 @@ exit 0
 
 `pre_tool` runs **synchronously before every tool call** and can block it:
 
-- The hook receives `JCODE_HOOK_TOOL_NAME` plus the full tool input JSON on
-  **stdin** (and a 16 KB-truncated copy in `JCODE_HOOK_TOOL_INPUT`).
+- The hook receives `KCODE_HOOK_TOOL_NAME` plus the full tool input JSON on
+  **stdin** (and a 16 KB-truncated copy in `KCODE_HOOK_TOOL_INPUT`).
 - **Exit 0**: allow the call.
 - **Exit 2**: block the call. The hook's stderr (trimmed, capped at 2000
   chars) is returned to the model as the tool error, so the model can adapt.
@@ -185,7 +185,7 @@ ignored, so plain exit-code scripts keep working. Recognized fields:
 - `permissionDecision: "deny"` (or legacy top-level `"decision": "block"`
   with `reason`) blocks the call with that reason.
 - `permissionDecision: "ask"` also blocks, with a "requires user approval"
-  reason. jcode has no interactive approval prompt for hooks yet.
+  reason. kcode has no interactive approval prompt for hooks yet.
 - `updatedInput` (an object) replaces the tool input. With several gates,
   later gates receive the rewritten input. A block discards rewrites.
 - `additionalContext` and `systemMessage` are appended to the tool result
@@ -193,7 +193,7 @@ ignored, so plain exit-code scripts keep working. Recognized fields:
 
 Fail-open is deliberate: a broken policy script should degrade to "no policy"
 rather than brick every session. If you need fail-closed semantics, make the
-hook itself robust (it is your trust boundary, not jcode).
+hook itself robust (it is your trust boundary, not kcode).
 
 ## Tool-input transformers: `pre_tool_transform`
 
@@ -202,12 +202,12 @@ input before it is validated and executed. Configure one or more in order:
 
 ```toml
 [hooks]
-pre_tool_transform = ["~/.jcode/plugins/rtk-transform"]
+pre_tool_transform = ["~/.kcode/plugins/rtk-transform"]
 pre_tool_transform_timeout_ms = 500
 ```
 
 Each transformer receives the current complete tool-input JSON on stdin and
-`JCODE_HOOK_TOOL_NAME`, `JCODE_HOOK_SESSION_ID`, and `JCODE_HOOK_CWD` in its
+`KCODE_HOOK_TOOL_NAME`, `KCODE_HOOK_SESSION_ID`, and `KCODE_HOOK_CWD` in its
 environment. It may print a replacement JSON object to stdout. Empty stdout,
 invalid JSON, a non-zero exit, a spawn error, or a timeout leaves the input
 unchanged. This fail-open contract makes optional integrations safe to enable.
@@ -221,11 +221,11 @@ small and tool-specific. For example, an RTK plugin should only change
 
 ```bash
 #!/usr/bin/env bash
-# ~/bin/jcode-tool-policy
-# stdin: tool input JSON. Env: JCODE_HOOK_TOOL_NAME, JCODE_HOOK_SESSION_ID...
+# ~/bin/kcode-tool-policy
+# stdin: tool input JSON. Env: KCODE_HOOK_TOOL_NAME, KCODE_HOOK_SESSION_ID...
 input=$(cat)
 
-case "$JCODE_HOOK_TOOL_NAME" in
+case "$KCODE_HOOK_TOOL_NAME" in
   bash)
     if grep -qE 'rm -rf /([^a-zA-Z]|$)|mkfs|dd if=' <<<"$input"; then
       echo "blocked: destructive shell command" >&2
@@ -246,37 +246,37 @@ exit 0
 
 ```bash
 #!/usr/bin/env bash
-# ~/bin/jcode-turn-notify
-if [ "$JCODE_HOOK_STATUS" = ok ]; then icon=✅; else icon=❌; fi
-tmux display-message "jcode $icon ${JCODE_HOOK_SESSION_ID:0:12}" 2>/dev/null
-notify-send "jcode turn $JCODE_HOOK_STATUS" \
-  "${JCODE_HOOK_LAST_ASSISTANT_TEXT:0:120}" 2>/dev/null
+# ~/bin/kcode-turn-notify
+if [ "$KCODE_HOOK_STATUS" = ok ]; then icon=✅; else icon=❌; fi
+tmux display-message "kcode $icon ${KCODE_HOOK_SESSION_ID:0:12}" 2>/dev/null
+notify-send "kcode turn $KCODE_HOOK_STATUS" \
+  "${KCODE_HOOK_LAST_ASSISTANT_TEXT:0:120}" 2>/dev/null
 exit 0
 ```
 
 ## Example: JSON event log of all hook activity
 
-Point several hooks at one script and fan out on `JCODE_HOOK_EVENT`:
+Point several hooks at one script and fan out on `KCODE_HOOK_EVENT`:
 
 ```bash
 #!/usr/bin/env bash
-# ~/bin/jcode-event-log
-echo "$JCODE_HOOK_PAYLOAD" >> ~/.local/state/jcode-events.jsonl
+# ~/bin/kcode-event-log
+echo "$KCODE_HOOK_PAYLOAD" >> ~/.local/state/kcode-events.jsonl
 ```
 
 ```toml
 [hooks]
-turn_end      = "~/bin/jcode-event-log"
-session_start = "~/bin/jcode-event-log"
-session_end   = "~/bin/jcode-event-log"
-post_tool     = "~/bin/jcode-event-log"
+turn_end      = "~/bin/kcode-event-log"
+session_start = "~/bin/kcode-event-log"
+session_end   = "~/bin/kcode-event-log"
+post_tool     = "~/bin/kcode-event-log"
 ```
 
 ## Design notes
 
 - Hook lookups are config-driven and re-read on config reload; you can add or
-  change hooks without restarting jcode.
+  change hooks without restarting kcode.
 - Hot paths (`pre_tool`/`post_tool`) check whether a hook is configured before
   building any payload, so unconfigured hooks cost ~nothing.
-- The recursion guard (`JCODE_HOOKS_DISABLED=1`) means a hook may safely call
-  `jcode` CLI commands without re-triggering hooks in that nested process.
+- The recursion guard (`KCODE_HOOKS_DISABLED=1`) means a hook may safely call
+  `kcode` CLI commands without re-triggering hooks in that nested process.

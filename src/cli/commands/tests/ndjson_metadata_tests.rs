@@ -72,7 +72,7 @@ fn server_reload_report_preserves_json_fields_and_exit_status_contract() {
 
     for (had_listener, already_current, handoff_ready, should_fail) in cases {
         let report = ServerReloadReport {
-            socket: "/tmp/jcode.sock".to_string(),
+            socket: "/tmp/kcode.sock".to_string(),
             had_listener,
             forced: false,
             reloaded: had_listener && !already_current,
@@ -102,10 +102,10 @@ fn server_reload_report_preserves_json_fields_and_exit_status_contract() {
 #[tokio::test]
 async fn server_reload_without_listener_is_a_successful_json_noop() {
     let _env_lock = crate::storage::lock_test_env();
-    let _saved = SavedEnv::capture(&["JCODE_HOME", "JCODE_SOCKET"]);
+    let _saved = SavedEnv::capture(&["KCODE_HOME", "KCODE_SOCKET"]);
     let home = tempfile::tempdir().expect("tempdir");
-    crate::env::set_var("JCODE_HOME", home.path());
-    crate::env::set_var("JCODE_SOCKET", home.path().join("isolated.sock"));
+    crate::env::set_var("KCODE_HOME", home.path());
+    crate::env::set_var("KCODE_SOCKET", home.path().join("isolated.sock"));
 
     let mut output = Vec::new();
     let result = run_server_reload_command_to(false, true, &mut output).await;
@@ -121,6 +121,6 @@ async fn server_reload_without_listener_is_a_successful_json_noop() {
     assert!(
         report["detail"]
             .as_str()
-            .is_some_and(|detail| { detail.contains("No running jcode server found") })
+            .is_some_and(|detail| { detail.contains("No running kcode server found") })
     );
 }

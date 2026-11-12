@@ -27,7 +27,7 @@ async fn login_copilot_device_flow(no_browser: bool) -> Result<()> {
     eprintln!("  Open this URL in your browser:");
     eprintln!("    {}", device_resp.verification_uri);
     eprintln!();
-    if let Some(qr) = jcode_terminal_prompt::qr::indented_section(
+    if let Some(qr) = kcode_terminal_prompt::qr::indented_section(
         &device_resp.verification_uri,
         "  Or scan this QR on another device to open the verification page:",
         "    ",
@@ -63,7 +63,7 @@ async fn login_copilot_device_flow(no_browser: bool) -> Result<()> {
 pub(super) async fn login_muse_subscription_flow(no_browser: bool) -> Result<LoginFlowOutcome> {
     // Native Muse subscription (experimental, explicit opt-in). The gate lives
     // in auth::muse so every surface (CLI, scriptable, TUI) enforces the same
-    // JCODE_EXPERIMENTAL_MUSE_SUBSCRIPTION=1 requirement.
+    // KCODE_EXPERIMENTAL_MUSE_SUBSCRIPTION=1 requirement.
     auth::muse::ensure_enabled()?;
     eprintln!("{}", auth::muse::experimental_warning_message());
     eprintln!("Starting native Muse subscription login...");

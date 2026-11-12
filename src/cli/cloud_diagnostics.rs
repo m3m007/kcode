@@ -156,7 +156,7 @@ fn read_problems(path: &Path, limit: usize) -> Problems {
 
 pub(super) fn problems(limit: usize, json: bool) -> Result<()> {
     let report = read_problems(
-        &crate::storage::jcode_dir()?.join("logs/cloud-problems.jsonl"),
+        &crate::storage::kcode_dir()?.join("logs/cloud-problems.jsonl"),
         limit,
     );
     if json {
@@ -298,18 +298,18 @@ fn safe_version(bytes: &[u8]) -> Option<String> {
             return None;
         }
     };
-    let version = text.strip_prefix("jcode ")?.split_whitespace().next()?;
+    let version = text.strip_prefix("kcode ")?.split_whitespace().next()?;
     let release = version.trim_start_matches('v').split('-').next()?;
     (release.len() <= 40
         && release.split('.').count() == 3
         && release
             .split('.')
             .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit())))
-    .then(|| format!("jcode {release}"))
+    .then(|| format!("kcode {release}"))
 }
 
 pub(super) fn doctor(target: &super::Target, json: bool) -> Result<()> {
-    let root = crate::storage::jcode_dir()?;
+    let root = crate::storage::kcode_dir()?;
     let signed_in = super::super::cloud_managed::account_available();
     let (moved, local, bad) = lease_counts(&root);
     let mut report = Doctor {
@@ -461,11 +461,11 @@ mod tests {
         let json = serde_json::to_string(&safe_problem(raw)).unwrap();
         assert!(!json.contains("secret-token"));
         assert_eq!(
-            safe_version(b"jcode v0.99.714-dev (secret-token)"),
-            Some("jcode 0.99.714".into())
+            safe_version(b"kcode v0.99.714-dev (secret-token)"),
+            Some("kcode 0.99.714".into())
         );
         assert!(safe_version(b"Bearer secret-token").is_none());
-        assert!(safe_version(b"jcode \xff").is_none());
+        assert!(safe_version(b"kcode \xff").is_none());
     }
 
     #[test]

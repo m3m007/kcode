@@ -12,7 +12,7 @@ pub(super) fn run(target: &Target, yes: bool, dry_run: bool, json: bool) -> Resu
     target.preflight(&host)?;
     target
         .run_remote(&host, &["cloud", "replace-receive", "--help"], None)
-        .context("cloud host needs a jcode version supporting cloud replace")?;
+        .context("cloud host needs a kcode version supporting cloud replace")?;
     let stage = tempfile::tempdir()?;
     let id = format!("replace-{}", uuid::Uuid::new_v4());
     let mut repo = prepare_repo_snapshot(&std::env::current_dir()?, &id, stage.path())?
@@ -89,7 +89,7 @@ fn reject_lease(root: &Path, lease: &storage::SessionLease) -> Result<()> {
         }
     {
         bail!(
-            "repository is owned by cloud session {}; inactivity does not release its unreturned work. On the source machine run `jcode cloud return --session {} --refs-only`, then retry replacement. This preserves cloud work as Git refs without changing your local checkout and permanently fences the old cloud owner. If return was interrupted, rerun the same command to finish recovery; do not delete the lease",
+            "repository is owned by cloud session {}; inactivity does not release its unreturned work. On the source machine run `kcode cloud return --session {} --refs-only`, then retry replacement. This preserves cloud work as Git refs without changing your local checkout and permanently fences the old cloud owner. If return was interrupted, rerun the same command to finish recovery; do not delete the lease",
             lease.session_id,
             lease.session_id
         );
@@ -203,7 +203,7 @@ fn validate_destination(root: &Path) -> Result<()> {
         Err(error) => return Err(error).context("cannot inspect replacement destination"),
     }
     let resolved = resolved_path(root)?;
-    for protected in [dirs::home_dir(), Some(storage::jcode_dir()?)]
+    for protected in [dirs::home_dir(), Some(storage::kcode_dir()?)]
         .into_iter()
         .flatten()
     {
@@ -230,13 +230,13 @@ fn install(repo: &RepoManifest, bundle: &Path, id: &str) -> Result<Option<PathBu
         .truncate(false)
         .write(true)
         .open(parent.join(format!(
-            ".{}.jcode-replace.lock",
+            ".{}.kcode-replace.lock",
             filename.to_string_lossy()
         )))?;
     lock.try_lock()
         .context("another replacement is already running for this checkout")?;
     let prepared = tempfile::Builder::new()
-        .prefix(".jcode-replace-")
+        .prefix(".kcode-replace-")
         .tempdir_in(parent)?;
     let mut staged = repo.clone();
     staged.root = prepared
@@ -259,7 +259,7 @@ fn install(repo: &RepoManifest, bundle: &Path, id: &str) -> Result<Option<PathBu
     };
     let backup = if exists {
         let backup = parent.join(format!(
-            "{}.jcode-backup-{}",
+            "{}.kcode-backup-{}",
             filename.to_string_lossy(),
             uuid::Uuid::new_v4()
         ));
@@ -333,7 +333,7 @@ mod tests {
         assert!(validate_destination(Path::new("/")).is_err());
         assert!(validate_destination(Path::new("relative/repo")).is_err());
         assert!(validate_destination(Path::new("/tmp/../repo")).is_err());
-        assert!(validate_destination(&storage::jcode_dir().unwrap()).is_err());
+        assert!(validate_destination(&storage::kcode_dir().unwrap()).is_err());
         if let Some(home) = dirs::home_dir() {
             assert!(validate_destination(&home).is_err());
         }
@@ -353,7 +353,7 @@ mod tests {
     // Ownership discovery uses process-global storage. Run filesystem cases in
     // a child with a private home rather than changing env in parallel tests.
     fn isolated(name: &str) -> bool {
-        if std::env::var("JCODE_REPLACE_TEST_CHILD").as_deref() == Ok(name) {
+        if std::env::var("KCODE_REPLACE_TEST_CHILD").as_deref() == Ok(name) {
             return false;
         }
         let home = tempfile::tempdir().unwrap();
@@ -363,8 +363,8 @@ mod tests {
                 &format!("cli::cloud_move::replace::tests::{name}"),
                 "--nocapture",
             ])
-            .env("JCODE_HOME", home.path())
-            .env("JCODE_REPLACE_TEST_CHILD", name)
+            .env("KCODE_HOME", home.path())
+            .env("KCODE_REPLACE_TEST_CHILD", name)
             .output()
             .unwrap();
         assert!(
@@ -399,7 +399,7 @@ mod tests {
         assert!(reject_lease(root, &lease).is_ok());
         lease.away_host = Some("return-pending".into());
         let error = reject_lease(root, &lease).unwrap_err().to_string();
-        assert!(error.contains("jcode cloud return --session another-session --refs-only"));
+        assert!(error.contains("kcode cloud return --session another-session --refs-only"));
         assert!(error.contains("do not delete the lease"));
         lease.away_host = Some("returned-complete".into());
         assert!(reject_lease(root, &lease).is_ok());
@@ -635,14 +635,14 @@ mod tests {
         use crate::cli::args::{Args, CloudCommand, Command};
         use clap::Parser;
         let args =
-            Args::try_parse_from(["jcode", "cloud", "replace", "--host", "test-host", "--json"])
+            Args::try_parse_from(["kcode", "cloud", "replace", "--host", "test-host", "--json"])
                 .unwrap();
         assert!(matches!(
             args.command,
             Some(Command::Cloud(CloudCommand::Replace { json: true, .. }))
         ));
-        assert!(Args::try_parse_from(["jcode", "cloud", "replace", "--session", "live"]).is_err());
-        assert!(Args::try_parse_from(["jcode", "cloud", "replace", "--allow-active"]).is_err());
+        assert!(Args::try_parse_from(["kcode", "cloud", "replace", "--session", "live"]).is_err());
+        assert!(Args::try_parse_from(["kcode", "cloud", "replace", "--allow-active"]).is_err());
     }
 
     fn source() -> (tempfile::TempDir, tempfile::TempDir, RepoManifest) {

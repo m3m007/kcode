@@ -11,7 +11,7 @@ pub(crate) async fn wait_for_selfdev_reload_cycle(
     let mut stable_since: Option<Instant> = None;
 
     while Instant::now() < deadline {
-        let marker_active = jcode::server::reload_marker_active(Duration::from_secs(30));
+        let marker_active = kcode::server::reload_marker_active(Duration::from_secs(30));
         let server_info = match tokio::time::timeout(
             Duration::from_millis(750),
             debug_run_command(debug_socket_path.to_path_buf(), "server:info", None),

@@ -48,9 +48,9 @@ preserved through warm/cold scans rather than rebuilt for every token.
 ## Reproduce
 
 ```bash
-justrust check --remote -p jcode-tui --tests
-justrust test --remote -p jcode-tui --lib session_picker
-justrust test --remote -p jcode-tui --lib benchmark_incremental_query_readiness -- --ignored --nocapture
+justrust check --remote -p kcode-tui --tests
+justrust test --remote -p kcode-tui --lib session_picker
+justrust test --remote -p kcode-tui --lib benchmark_incremental_query_readiness -- --ignored --nocapture
 ```
 
 The manual readiness benchmark prepares one approximately 165 KiB JSONL
@@ -97,7 +97,7 @@ streaming equivalence matrix. The three input-handler observations were
 Final same-fixture readiness run `20261102-193212533-3045976` measured 2.411,
 2.146, 2.139, 2.139, and 2.137 ms. This preserves the approximately 2–3 ms warm
 worker-result readiness observed before the lookup-bound refinement.
-`check -p jcode-tui --tests` passed. Scoped non-strict Clippy passed as run
+`check -p kcode-tui --tests` passed. Scoped non-strict Clippy passed as run
 `20261102-193213201-3046039`, with existing project warnings. Its one cache
 conditional-style warning was then corrected without changing matching logic.
 

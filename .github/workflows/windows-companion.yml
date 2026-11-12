@@ -3,10 +3,10 @@ name: Windows Companion Compile
 on:
   pull_request:
     paths:
-      - 'crates/jcode-companion/**'
-      - 'crates/jcode-core/**'
-      - 'crates/jcode-base/**'
-      - 'crates/jcode-transport/**'
+      - 'crates/kcode-companion/**'
+      - 'crates/kcode-core/**'
+      - 'crates/kcode-base/**'
+      - 'crates/kcode-transport/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/windows-companion.yml'
@@ -14,10 +14,10 @@ on:
   push:
     branches: [master]
     paths:
-      - 'crates/jcode-companion/**'
-      - 'crates/jcode-core/**'
-      - 'crates/jcode-base/**'
-      - 'crates/jcode-transport/**'
+      - 'crates/kcode-companion/**'
+      - 'crates/kcode-core/**'
+      - 'crates/kcode-base/**'
+      - 'crates/kcode-transport/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/windows-companion.yml'
@@ -72,5 +72,5 @@ jobs:
       - name: Check companion and Windows acceptance loop
         shell: pwsh
         run: |
-          & justrust check --local --locked -p jcode-companion --target ${{ matrix.target }}
+          & justrust check --local --locked -p kcode-companion --target ${{ matrix.target }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

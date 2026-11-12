@@ -6,7 +6,7 @@
     "Google login lets you pick which services to connect and adds a built-in calendar tool for viewing, creating, updating, and deleting events",
     "Guided Google OAuth app setup that detects existing gcloud credentials, validates generated project IDs, and imports the app automatically",
     "Alt+Up/Down cycles the speed tier between Standard, Fast, and Ultrafast",
-    "New /desktop command opens the current session in Jcode Desktop"
+    "New /desktop command opens the current session in Kcode Desktop"
   ],
   "improvements": [
     "MCP tool results and mcp_search output are fitted to token budgets instead of fixed caps, and accept_large_output returns the full result",

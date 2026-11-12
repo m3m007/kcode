@@ -21,8 +21,8 @@ Set `session_picker_enter = "new-terminal"` to swap `Enter` and `Ctrl+Enter`.
 
 When resuming in the current terminal:
 
-- Jcode sessions switch the current workspace/client to that session.
-- Importable external sessions are first converted to a Jcode session, then resumed in place.
+- Kcode sessions switch the current workspace/client to that session.
+- Importable external sessions are first converted to a Kcode session, then resumed in place.
 - If multiple sessions are selected, only the first selected target is resumed in place and the UI tells the user this.
 - The picker closes after queueing the in-place resume.
 
@@ -31,13 +31,13 @@ When resuming in the current terminal:
 When opening in a new terminal:
 
 - Each selected target opens in its own terminal when possible.
-- If terminal launch is unavailable, the UI prints manual `jcode --resume <id>` commands.
+- If terminal launch is unavailable, the UI prints manual `kcode --resume <id>` commands.
 - The picker remains open after launching and clears the current multi-selection so more sessions can be opened.
 
 ## Session already open in another window
 
 `display.resume_open_elsewhere` decides what happens when the picked session is
-already shown by another local jcode window (Linux only):
+already shown by another local kcode window (Linux only):
 
 ```toml
 [display]
@@ -46,13 +46,13 @@ resume_open_elsewhere = "move"   # "off" (default), "move", or "replace"
 
 - `off`: attach a second client and leave the other window alone.
 - `move`: bring the existing window to the focused workspace and focus it, and
-  do not attach again. A standalone picker window (`jcode --resume`) then exits.
+  do not attach again. A standalone picker window (`kcode --resume`) then exits.
   Requires niri. When the window cannot be identified unambiguously (no niri,
   or one terminal process hosting several windows) it behaves like `replace`.
 - `replace`: resume as usual and close the other window's client. The closed
   client exits cleanly, so the session is not marked crashed.
 
-Env override: `JCODE_RESUME_OPEN_ELSEWHERE`.
+Env override: `KCODE_RESUME_OPEN_ELSEWHERE`.
 
 ## Saved sessions
 

@@ -2,9 +2,9 @@ use super::*;
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum RestartCommand {
-    /// Save a reboot snapshot of currently active jcode windows
+    /// Save a reboot snapshot of currently active kcode windows
     Save {
-        /// Restore this reboot snapshot automatically the next time plain `jcode` starts
+        /// Restore this reboot snapshot automatically the next time plain `kcode` starts
         #[arg(long)]
         auto_restore: bool,
     },

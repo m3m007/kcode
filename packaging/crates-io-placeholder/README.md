@@ -1,16 +1,16 @@
-# jcode (crates.io placeholder)
+# kcode (crates.io placeholder)
 
-This crate reserves the `jcode` name on crates.io. It is not the full agent.
+This crate reserves the `kcode` name on crates.io. It is not the full agent.
 
-Install the real jcode:
+Install the real kcode:
 
 ```bash
-curl -fsSL https://jcode.sh/install | bash   # macOS / Linux
-brew install jcode                           # Homebrew
+curl -fsSL https://kcode.sh/install | bash   # macOS / Linux
+brew install kcode                           # Homebrew
 ```
 
 ```powershell
-irm https://jcode.sh/install.ps1 | iex       # Windows
+irm https://kcode.sh/install.ps1 | iex       # Windows
 ```
 
-Source: https://github.com/1jehuang/jcode · Docs: https://jcode.sh/docs
+Source: https://github.com/1jehuang/kcode · Docs: https://kcode.sh/docs

@@ -1,0 +1,32 @@
+[package]
+name = "kcode-companion"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "kcode companion: per-login helper for desktop-only effects (open, terminals, lid override, global voice, browser bridge updates)"
+
+# Runs in the user's graphical session. The harness server reaches it only
+# through jcode_base::companion_client and never links this crate.
+[lib]
+name = "kcode_companion"
+path = "src/lib.rs"
+
+[dependencies]
+kcode-base = { path = "../kcode-base", default-features = false }
+kcode-desktop-open = { path = "../kcode-desktop-open" }
+kcode-transport = { path = "../kcode-transport" }
+kcode-voice = { path = "../kcode-voice" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+async-io = "2.6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Power", "Win32_System_SystemServices"] }
+
+[dev-dependencies]
+kcode-base = { path = "../kcode-base", default-features = false, features = ["test-support"] }
+tempfile = "3"

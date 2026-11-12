@@ -59,7 +59,7 @@ profile endpoint at startup. At most two requests run concurrently. Each account
 is attempted no more than once per fifteen minutes per process, including failed
 attempts, and no network request blocks startup routing or rendering.
 
-Preferences are stored in `~/.jcode/account-pool.json`. Its optional `priorities`
+Preferences are stored in `~/.kcode/account-pool.json`. Its optional `priorities`
 object maps account keys such as `openai:openai-fox` or `openai-api` to zero-based
 priority values. Older files without this object continue to load.
 

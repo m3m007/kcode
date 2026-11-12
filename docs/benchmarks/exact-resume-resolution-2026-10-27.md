@@ -21,7 +21,7 @@ These are **resolution-helper timings, not end-to-end resume or first-frame late
 Reproduce with existing local session IDs only:
 
 ```bash
-JCODE_RESUME_BENCH_IDS=<id1>,<id2>,<id3> justrust test --local -p jcode-base --lib benchmark_exact_resume_resolution_real_corpus -- --ignored --nocapture
+KCODE_RESUME_BENCH_IDS=<id1>,<id2>,<id3> justrust test --local -p kcode-base --lib benchmark_exact_resume_resolution_real_corpus -- --ignored --nocapture
 ```
 
 Local corpus run: `20261027-010959569-2287748`. Hosted compilation check passed (`20261027-010909096-2284101`). Final targeted hosted regression run `20261027-011103849-2294297` passed ten tests, including journal-only metadata changes, authoritative corruption detection, traversal/directory rejection, imported IDs, bare-provider aliases, and title matching. The broader hosted session suite `20261027-011145906-2298307` passed 112 tests with three opt-in tests ignored.

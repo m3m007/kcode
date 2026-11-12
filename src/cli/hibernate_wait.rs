@@ -1,14 +1,14 @@
 //! Exit-mode idle hibernation waiter.
 //!
 //! When `session.hibernation_mode = "exit"`, an idle client re-execs itself
-//! with `JCODE_HIBERNATE_WAIT=1` and its normal `--resume` arguments. The
-//! process is intercepted in `main` before the Tokio runtime or any jcode
+//! with `KCODE_HIBERNATE_WAIT=1` and its normal `--resume` arguments. The
+//! process is intercepted in `main` before the Tokio runtime or any kcode
 //! state exists, so it holds only a few hundred KiB of private memory. The
 //! last frame stays on screen (the terminal is not restored across the exec).
 //! The first byte of input wakes it, and it re-execs the same arguments
 //! without the marker, resuming the session from the daemon.
 
-pub const WAIT_ENV: &str = "JCODE_HIBERNATE_WAIT";
+pub const WAIT_ENV: &str = "KCODE_HIBERNATE_WAIT";
 
 pub fn is_invocation() -> bool {
     std::env::var_os(WAIT_ENV).is_some()
@@ -18,13 +18,13 @@ pub fn is_invocation() -> bool {
 pub fn waiter_command(session_id: &str) -> std::io::Result<std::process::Command> {
     let exe = std::env::current_exe()?;
     let mut cmd = std::process::Command::new(exe);
-    if jcode_selfdev_types::client_selfdev_requested() {
+    if kcode_selfdev_types::client_selfdev_requested() {
         cmd.arg("self-dev");
     }
     cmd.arg("--resume")
         .arg(session_id)
         .env(WAIT_ENV, "1")
-        .env("JCODE_RESUMING", "1")
+        .env("KCODE_RESUMING", "1")
         .current_dir(std::env::current_dir()?);
     Ok(cmd)
 }
@@ -38,7 +38,7 @@ pub fn run() -> anyhow::Result<()> {
     let mut cmd = std::process::Command::new(&exe);
     cmd.args(args)
         .env_remove(WAIT_ENV)
-        .env("JCODE_RELOAD_FAST_START", "1");
+        .env("KCODE_RELOAD_FAST_START", "1");
     let err = crate::platform::replace_process(&mut cmd);
     Err(anyhow::anyhow!("failed to resume after hibernation: {err}"))
 }

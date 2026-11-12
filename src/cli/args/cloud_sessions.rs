@@ -58,7 +58,7 @@ pub(crate) enum CloudSessionsCommand {
     /// Upload the newest local Jcode session to Jade cloud storage
     UploadLatest {
         /// Directory containing local Jcode session JSON files
-        #[arg(long, default_value = "~/.jcode/sessions")]
+        #[arg(long, default_value = "~/.kcode/sessions")]
         sessions_dir: String,
 
         /// Upload without Jade's redaction pass
@@ -71,7 +71,7 @@ pub(crate) enum CloudSessionsCommand {
 
     /// Sync new or changed local sessions to Jade cloud storage (idempotent; safe to schedule)
     Sync {
-        /// Directory containing local Jcode session JSON files (default: ~/.jcode/sessions)
+        /// Directory containing local Jcode session JSON files (default: ~/.kcode/sessions)
         #[arg(long)]
         sessions_dir: Option<String>,
 
@@ -192,7 +192,7 @@ pub(crate) struct JadeCloudOptions {
     #[arg(long)]
     pub(crate) region: Option<String>,
 
-    /// Path to the private Jade session helper. Defaults to $JCODE_JADE_SESSIONS_HELPER or ~/jade/scripts/jade_sessions.py.
+    /// Path to the private Jade session helper. Defaults to $KCODE_JADE_SESSIONS_HELPER or ~/jade/scripts/jade_sessions.py.
     #[arg(long)]
     pub(crate) helper: Option<String>,
 }

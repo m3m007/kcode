@@ -10,18 +10,18 @@ surfaces live in this repo; backend surfaces live in `solosystems-backend`.
 
 ## Existing surfaces (grounding)
 
-- Client telemetry pipeline: `crates/jcode-telemetry-core/src/lib.rs`
+- Client telemetry pipeline: `crates/kcode-telemetry-core/src/lib.rs`
   (`record_auth_success` @1409, `sanitize_telemetry_label` applied to all
   auth labels @398-400; `AuthEvent` schema in
-  `crates/jcode-usage-types/src/lib.rs:270-284` has NO account_id/email slot,
+  `crates/kcode-usage-types/src/lib.rs:270-284` has NO account_id/email slot,
   in the current implementation. The provider OAuth email exception below is
   policy permission only, not an implemented schema change).
 - Onboarding auth funnel: `auth_provider`, `auth_method`,
   `auth_failure_reason` on onboarding step events
-  (`crates/jcode-telemetry-core/src/lib.rs:369-400`).
-- Failure classification labels: `crates/jcode-base/src/auth/login_diagnostics.rs`
+  (`crates/kcode-telemetry-core/src/lib.rs:369-400`).
+- Failure classification labels: `crates/kcode-base/src/auth/login_diagnostics.rs`
   (`AuthFailureReason::label`) — the only failure detail that may be reported.
-- Local logs: `~/.jcode/logs/jcode-YYYY-MM-DD.log`.
+- Local logs: `~/.kcode/logs/kcode-YYYY-MM-DD.log`.
 - Backend telemetry store: `telemetry-worker/` (D1; subscription analytics
   columns from migration `0016_web_subscription_analytics.sql`).
 - Public privacy contract: `TELEMETRY.md` (minimal usage telemetry, a scoped
@@ -32,7 +32,7 @@ surfaces live in this repo; backend surfaces live in `solosystems-backend`.
 These values must never appear in logs, telemetry, traces, crash reports, or
 support bundles, at any log level:
 
-- `api_key` (JCODE_API_KEY) — full or truncated beyond `jc_...last4`.
+- `api_key` (KCODE_API_KEY) — full or truncated beyond `jc_...last4`.
 - `device_code`, magic-link tokens, approval URL query params.
 - Raw email addresses except the scoped provider OAuth telemetry collection
   permitted by `TELEMETRY.md`. That exception applies only to model-provider
@@ -44,7 +44,7 @@ support bundles, at any log level:
   audit email remains confined to the audit table.
 - Stripe secrets: webhook signing secret, customer payment details, full
   checkout/portal session URLs (they embed session secrets).
-- Env-file contents (`jcode-subscription` env file) and `Authorization`
+- Env-file contents (`kcode-subscription` env file) and `Authorization`
   headers in any HTTP client debug logging.
 
 Enforcement: SN-03 conformance test greps captured login output; add a
@@ -78,7 +78,7 @@ exception does not authorize subscription account-ID correlation.
 ## Client telemetry (this repo, minimal usage data)
 
 Subscription device-flow events keep the current shape: success events with coarse `auth_provider` +
-`auth_method` ("jcode-subscription", "device_code_magic_link"), failure
+`auth_method` ("kcode-subscription", "device_code_magic_link"), failure
 reasons restricted to `AuthFailureReason::label` values. Additions:
 
 - `auth_failure` event mirroring `auth_success` (reason label only).
@@ -86,7 +86,7 @@ reasons restricted to `AuthFailureReason::label` values. Additions:
   bucketed time-to-approve (e.g. <30s, <2m, <15m) — no timestamps precise
   enough to correlate with backend logs.
 - Do NOT add `account_id` to `AuthEvent` (the existing TODO at
-  `src/cli/login/jcode_device.rs:370` should be resolved as "backend audit
+  `src/cli/login/kcode_device.rs:370` should be resolved as "backend audit
   owns subscription account-linked events; device-flow telemetry stays coarse").
 
 ### Provider OAuth email exception
@@ -121,7 +121,7 @@ Metrics (per flow, labeled by outcome and tier where applicable):
   (client misbehavior or attack) and on unexpected-5xx ratio > 1%.
 - `me_requests_total{status}`; alert on 401 spike (mass revocation bug) and
   p99 latency > 2s (client timeout is 5s: `ME_FETCH_TIMEOUT`,
-  `crates/jcode-base/src/subscription_api.rs:14`).
+  `crates/kcode-base/src/subscription_api.rs:14`).
 - `webhook_events_total{type, outcome=applied|duplicate|rejected}` and
   `webhook_apply_lag_seconds` (Stripe `created` -> state applied);
   alert: rejected signatures > 0 sustained, lag p95 > 60s (this is the
@@ -153,13 +153,13 @@ login flow use the daily log with the flow outcome only.
 | Stripe webhook payload archive | backend (encrypted) | 90 days |
 | Client usage telemetry | telemetry-worker D1 | per TELEMETRY.md; provider OAuth email linkage permitted only under its scoped exception |
 | Provider OAuth email telemetry | Private `oauth_accounts` D1 table | 90 days from creation, pruned nightly; deletion by installation ID |
-| Local client logs | `~/.jcode/logs/` | user-owned; must satisfy never-log list |
+| Local client logs | `~/.kcode/logs/` | user-owned; must satisfy never-log list |
 | Support bundles | created on demand | delete after case close (<= 90 days) |
 
 ## Support diagnostics
 
-`jcode doctor`-style account diagnostics (extend existing provider doctor,
-`crates/jcode-provider-doctor/`): prints auth_base, masked key
+`kcode doctor`-style account diagnostics (extend existing provider doctor,
+`crates/kcode-provider-doctor/`): prints auth_base, masked key
 (`jc_...last4`), account email as stored locally, cached tier
 (`subscription_catalog::cached_tier`), last `/v1/me` status, env-file path
 and permissions. Copy-safe by construction (never full key). Support asks
@@ -184,8 +184,8 @@ the audit table. No flow requires the user to paste a key or link.
 
 ## Follow-ups (actionable in this repo)
 
-- Add `record_auth_failure` for the jcode device flow (labels only).
-- Resolve the `account_linked` TODO in `jcode_device.rs` as "won't add to
+- Add `record_auth_failure` for the kcode device flow (labels only).
+- Resolve the `account_linked` TODO in `kcode_device.rs` as "won't add to
   client telemetry" and point to backend audit.
 - Add SN-03-style output-capture test asserting the never-log list for the
   login flow, and a doctor command for account diagnostics.

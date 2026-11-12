@@ -9,7 +9,7 @@ use crate::mcp::{McpConfig, McpServerConfig, oauth};
 fn remote_server<'a>(config: &'a McpConfig, name: &str) -> Result<(&'a McpServerConfig, &'a str)> {
     let server = config.servers.get(name).with_context(|| {
         format!(
-            "MCP server '{name}' is not configured. Run `jcode mcp list` to see configured names."
+            "MCP server '{name}' is not configured. Run `kcode mcp list` to see configured names."
         )
     })?;
     if !server.is_remote() {
@@ -70,7 +70,7 @@ fn server_rows(config: &McpConfig) -> Result<Vec<Value>> {
 
 fn render_list(rows: &[Value]) -> String {
     if rows.is_empty() {
-        return "No MCP servers configured. Add servers to ~/.jcode/mcp.json or .jcode/mcp.json.\n"
+        return "No MCP servers configured. Add servers to ~/.kcode/mcp.json or .kcode/mcp.json.\n"
             .into();
     }
     let mut output = String::from("Configured MCP servers (not a connection check):\n");
@@ -94,9 +94,9 @@ pub(crate) async fn run(action: McpCommand) -> Result<()> {
     let config = McpConfig::load();
     match action {
         McpCommand::Test { server: name } => {
-            let server = config.servers.get(&name).with_context(|| format!("MCP server '{name}' is not configured. Run `jcode mcp list` to see configured names."))?;
+            let server = config.servers.get(&name).with_context(|| format!("MCP server '{name}' is not configured. Run `kcode mcp list` to see configured names."))?;
             let mut client = crate::mcp::McpClient::connect(name.clone(), server).await
-                .with_context(|| format!("Failed to connect to MCP server '{name}'. For remote OAuth authentication, run `jcode mcp login {name}` first."))?;
+                .with_context(|| format!("Failed to connect to MCP server '{name}'. For remote OAuth authentication, run `kcode mcp login {name}` first."))?;
             let info = client.server_info();
             let mut tools = client.tools();
             tools.sort_by(|left, right| left.name.cmp(&right.name));
@@ -129,7 +129,7 @@ pub(crate) async fn run(action: McpCommand) -> Result<()> {
             let (server, url) = remote_server(&config, &name)?;
             if static_auth(server) {
                 bail!(
-                    "MCP server '{name}' has a static Authorization header, which takes precedence over OAuth. Remove that header from MCP config before using `jcode mcp login {name}`."
+                    "MCP server '{name}' has a static Authorization header, which takes precedence over OAuth. Remove that header from MCP config before using `kcode mcp login {name}`."
                 );
             }
             let mode = if no_browser {
@@ -189,7 +189,7 @@ mod tests {
             remote_server(&config, "missing")
                 .unwrap_err()
                 .to_string()
-                .contains("jcode mcp list")
+                .contains("kcode mcp list")
         );
         assert!(
             remote_server(&config, "local")
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn mcp_cli_list_reports_corrupt_oauth_store_without_exposing_contents() {
         let _sandbox = crate::auth::test_sandbox::AuthTestSandbox::new().unwrap();
-        let path = crate::storage::jcode_dir().unwrap().join("mcp-oauth.json");
+        let path = crate::storage::kcode_dir().unwrap().join("mcp-oauth.json");
         std::fs::write(path, "corrupt-secret-access-token").unwrap();
         let config = serde_json::from_value(
             json!({"servers": {"remote": {"url": "https://example.com/mcp"}}}),

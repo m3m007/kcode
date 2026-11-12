@@ -1,30 +1,30 @@
 # Replace a cloud checkout without moving a conversation
 
-Run `jcode cloud replace --dry-run` to preview, then `jcode cloud replace --yes`
+Run `kcode cloud replace --dry-run` to preview, then `kcode cloud replace --yes`
 from inside your local Git repository to apply. Explicit `--yes` is required
 before the cloud checkout can be changed. Dry-run validates the incoming snapshot
 and checks ownership without replacing cloud files or creating a backup. Use
 `--host <ssh-alias>` to choose a host, or use the same configured/managed destination as
-`jcode cloud move`. `--remote-binary`, `--transport`, and `--json` are supported.
-Both machines need a version of jcode supporting this command.
+`kcode cloud move`. `--remote-binary`, `--transport`, and `--json` are supported.
+Both machines need a version of kcode supporting this command.
 
-Inside a local Jcode session, use `/cloud replace` to see usage,
+Inside a local Kcode session, use `/cloud replace` to see usage,
 `/cloud replace --dry-run` to preview, and `/cloud replace --yes` to apply.
 Append `--host <ssh-alias>` for a specific destination. The command waits for
 the current turn to finish and uses the session's local working directory.
-It does not move the conversation, close Jcode, or discard drafts.
+It does not move the conversation, close Kcode, or discard drafts.
 After a successful replacement, the next model turn receives the same environment
 parity guidance used by `/cloud`, adjusted to explain that this session is still
 local. A preview does not inject a migration notice.
 
 ```sh
-jcode cloud replace --dry-run
-jcode cloud replace --yes
+kcode cloud replace --dry-run
+kcode cloud replace --yes
 ```
 
 The repository is restored at its local absolute root path on the cloud host.
 An absent checkout is created. An existing checkout is first moved, in its
-entirety, to a sibling named `<repo>.jcode-backup-<unique-id>`. The command prints
+entirety, to a sibling named `<repo>.kcode-backup-<unique-id>`. The command prints
 this recoverable backup path, or returns it in the JSON `backup_path` field. Backups
 are never automatically deleted. This preserves cloud-only commits, ignored
 files, untracked files and Git metadata. Restore a backup by stopping sessions
@@ -39,7 +39,7 @@ stores, the origin URL, conversation transcripts, and session ownership are not
 transferred. Secrets already committed or present in non-ignored repository files
 are repository content and will be copied. Audit those files before transfer.
 
-Explicit requirements recorded in `.jcode/cloud-environment.json` are synchronized
+Explicit requirements recorded in `.kcode/cloud-environment.json` are synchronized
 separately after replacement. This opt-in transfer can include ignored project
 configuration and approved credentials, without returning their contents to the
 model. An environment synchronization failure does not undo a successful checkout
@@ -53,5 +53,5 @@ again just before replacement, and replacement operations are serialized. Do not
 start another session during replacement: daemon session startup does not share
 the replacement lock. An SSH failure can leave a completed replacement whose
 response was lost. Inspect the checkout and its sibling backups before retrying.
-Symlink destinations, linked Git worktrees, home directories, Jcode state
+Symlink destinations, linked Git worktrees, home directories, Kcode state
 directories and their ancestors are rejected to protect unrelated state.

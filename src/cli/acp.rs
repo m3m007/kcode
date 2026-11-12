@@ -1058,7 +1058,7 @@ impl AcpRuntime {
                 }
                 other => {
                     if self.profile.is_extended() {
-                        self.write_jcode_extension_event(&attached_id, &other)
+                        self.write_kcode_extension_event(&attached_id, &other)
                             .await?;
                     }
                 }
@@ -1213,7 +1213,7 @@ impl AcpRuntime {
                 }
             };
             if self.profile.is_extended() {
-                self.write_jcode_extension_event(&session.session_id, &event)
+                self.write_kcode_extension_event(&session.session_id, &event)
                     .await?;
             }
             outcome.observe(&event, prompt_id);
@@ -1471,7 +1471,7 @@ impl AcpRuntime {
         .await
     }
 
-    async fn write_jcode_extension_event(
+    async fn write_kcode_extension_event(
         &self,
         session_id: &str,
         event: &ServerEvent,
@@ -1811,7 +1811,7 @@ fn initialize_result(params: &Value, profile: AcpProfile) -> Value {
         object.insert(
             "_meta".to_string(),
             json!({
-                "jcode": {
+                "kcode": {
                     "profile": profile.as_str(),
                     "extensions": ["raw_server_event"]
                 }
@@ -1823,9 +1823,9 @@ fn initialize_result(params: &Value, profile: AcpProfile) -> Value {
         "protocolVersion": protocol_version,
         "agentCapabilities": agent_capabilities,
         "agentInfo": {
-            "name": "jcode",
+            "name": "kcode",
             "title": "Jcode",
-            "version": jcode_build_meta::pkg_version(),
+            "version": kcode_build_meta::pkg_version(),
         },
         "authMethods": [],
     })
@@ -1863,11 +1863,11 @@ fn validate_acp_mcp_servers(params: &Value) -> std::result::Result<(), String> {
 }
 
 /// Read an explicit skill selection from ACP prompt metadata. Accepts
-/// `_meta.jcode.skill`, `_meta.jcode.activeSkill`, `_meta.skill`, and
+/// `_meta.kcode.skill`, `_meta.kcode.activeSkill`, `_meta.skill`, and
 /// `_meta.activeSkill`.
 fn explicit_skill_from_params(params: &Value) -> Option<String> {
     let meta = params.get("_meta")?;
-    [meta.get("jcode"), Some(meta)]
+    [meta.get("kcode"), Some(meta)]
         .into_iter()
         .flatten()
         .flat_map(|object| ["skill", "activeSkill", "active_skill"].map(|key| object.get(key)))
@@ -2084,10 +2084,10 @@ pub(crate) async fn run_acp_command(
     provider_profile: Option<String>,
     explicit_tool_profile: bool,
 ) -> Result<()> {
-    crate::env::set_var("JCODE_NON_INTERACTIVE", "1");
+    crate::env::set_var("KCODE_NON_INTERACTIVE", "1");
     let acp_config = crate::config::config().acp.clone();
     if !explicit_tool_profile {
-        crate::env::set_var("JCODE_TOOL_PROFILE", acp_config.tool_profile.trim());
+        crate::env::set_var("KCODE_TOOL_PROFILE", acp_config.tool_profile.trim());
         crate::config::invalidate_config_cache();
     }
     let profile = AcpProfile::parse(&acp_config.profile);

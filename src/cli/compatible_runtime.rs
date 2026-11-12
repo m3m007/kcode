@@ -32,7 +32,7 @@ pub(super) async fn init_compatible_runtime(
     disable_subscription_runtime_mode();
     let profile = profile_for_choice(choice)
         .ok_or_else(|| anyhow::anyhow!("missing provider profile for choice"))?;
-    if std::env::var_os("JCODE_NAMED_PROVIDER_PROFILE").is_none() {
+    if std::env::var_os("KCODE_NAMED_PROVIDER_PROFILE").is_none() {
         // An explicit `--provider <compatible>` selection should win over
         // any stale active-profile marker inherited from a previous
         // bootstrap/login flow. Named provider profiles still take
@@ -40,7 +40,7 @@ pub(super) async fn init_compatible_runtime(
         force_apply_openai_compatible_profile_env(Some(profile));
     }
     let mut runtime_model_hint = None;
-    let display_name = if let Ok(named) = std::env::var("JCODE_NAMED_PROVIDER_PROFILE") {
+    let display_name = if let Ok(named) = std::env::var("KCODE_NAMED_PROVIDER_PROFILE") {
         if let Some(profile) = crate::config::config().providers.get(&named) {
             runtime_model_hint = profile.default_model.clone();
         }
@@ -58,22 +58,22 @@ pub(super) async fn init_compatible_runtime(
         display_name
     ));
     crate::provider::activation::apply_openai_compatible_runtime(runtime_model_hint)?;
-    if std::env::var_os("JCODE_NAMED_PROVIDER_PROFILE").is_some() {
-        let profile_name = std::env::var("JCODE_NAMED_PROVIDER_PROFILE")?;
+    if std::env::var_os("KCODE_NAMED_PROVIDER_PROFILE").is_some() {
+        let profile_name = std::env::var("KCODE_NAMED_PROVIDER_PROFILE")?;
         let cfg = crate::config::config();
         let profile = cfg
             .providers
             .get(&profile_name)
             .ok_or_else(|| anyhow::anyhow!("Unknown provider profile '{}'", profile_name))?;
         Ok(Arc::new(
-            jcode_provider_openrouter_runtime::OpenRouterProvider::new_named_openai_compatible(
+            kcode_provider_openrouter_runtime::OpenRouterProvider::new_named_openai_compatible(
                 &profile_name,
                 profile,
             )?,
         ))
     } else {
         Ok(Arc::new(
-            jcode_provider_openrouter_runtime::OpenRouterProvider::new()?,
+            kcode_provider_openrouter_runtime::OpenRouterProvider::new()?,
         ))
     }
 }
@@ -92,7 +92,7 @@ async fn init_muse_subscription_runtime(
     );
     let profile = profile_for_choice(choice)
         .ok_or_else(|| anyhow::anyhow!("missing provider profile for choice"))?;
-    if std::env::var_os("JCODE_NAMED_PROVIDER_PROFILE").is_none() {
+    if std::env::var_os("KCODE_NAMED_PROVIDER_PROFILE").is_none() {
         force_apply_openai_compatible_profile_env(Some(profile));
     }
     let resolved = resolve_openai_compatible_profile(profile);

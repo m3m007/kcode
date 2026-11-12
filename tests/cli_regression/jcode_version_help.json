@@ -1,8 +1,8 @@
 {
   "version": {
     "must_contain": [
-      "jcode",
-      "jcode --version"
+      "kcode",
+      "kcode --version"
     ],
     "must_not_contain": [
       "panic",

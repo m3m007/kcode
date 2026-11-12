@@ -22,7 +22,7 @@ Offer semantics:
 
 A Fable reset restores weekly usage spent on Fable, leaving other models' weekly
 usage intact, and refills the five-hour window when present. Redemption is
-irreversible. The website permits early redemption, but Jcode automatic resets
+irreversible. The website permits early redemption, but Kcode automatic resets
 require actual server-confirmed weekly exhaustion and a usable grant. A
 five-hour-only wall never spends a Fable grant automatically.
 
@@ -47,7 +47,7 @@ contract. It was downloaded and inspected statically, not installed or executed:
   `unavailable`, with `reason`, `resets_left`, `cleared`, `weekly_resets_at`,
   `cooldown_until`. An uncertain claim is not permission to spend another grant.
 - Grant IDs match `^[a-z0-9_-]{1,40}$`. Request IDs match
-  `^[A-Za-z0-9_-]{1,64}$`. Jcode uses a UUID request ID.
+  `^[A-Za-z0-9_-]{1,64}$`. Kcode uses a UUID request ID.
 
 Public Settings bundles were investigated too. Curl of
 <https://claude.ai/settings/usage> returned a Cloudflare challenge. The browser
@@ -61,14 +61,14 @@ or real grant spend was used for discovery or tests.
 
 ## Concurrency and uncertain outcomes
 
-Jcode uses an OS file lock per verified account/organization identity and checks
+Kcode uses an OS file lock per verified account/organization identity and checks
 fresh status under that lock. Only exhausted all-model weekly or Fable
 included-weekly limits that the grant can address qualify. A simultaneous
 five-hour wall must also be cleared by the grant. A server-blocked
 or unrelated model-specific limit never triggers spending.
 
-Before POST, Jcode creates and fsyncs a durable journal at
-`~/.jcode/fable-resets/<identity-hash>.pending` (or the configured Jcode data
+Before POST, Kcode creates and fsyncs a durable journal at
+`~/.kcode/fable-resets/<identity-hash>.pending` (or the configured Kcode data
 root). It stores program, grant ID, request ID and time, never tokens or email.
 The journal remains after HTTP errors, timeouts, cancellation, process death,
 unknown responses or an unconfirmed reset. Subsequent calls, including after a

@@ -13,7 +13,7 @@
     "Polish usage cards with responsive gauges and compact Mil and Bil token totals",
     "Offer additional OAuth accounts in the login picker and reauthenticate saved accounts from it",
     "Show cache misses inline with more accurate cache reuse diagnostics",
-    "Show Jcode inference spending balance",
+    "Show Kcode inference spending balance",
     "Compress OpenAI and Anthropic request bodies to reduce upload time",
     "Build the /model picker off the UI thread for large remote catalogs",
     "Reconnect only changed MCP servers instead of restarting all of them",

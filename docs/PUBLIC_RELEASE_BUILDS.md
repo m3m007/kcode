@@ -9,7 +9,7 @@ per-package overrides retained.
 
 Linux, macOS, and Windows compilation uses the pinned justrust client installed
 by `scripts/install_justrust_ci.sh`. The installer selects the compiler host,
-not the Jcode target (Windows ARM64 cross-compilation still uses the x64 client),
+not the Kcode target (Windows ARM64 cross-compilation still uses the x64 client),
 verifies the published archive checksum, validates the executable before replacing
 an installation, and never logs in or installs from an unpinned source fallback.
 
@@ -18,13 +18,13 @@ inside the existing manylinux2014 container. `JUSTRUST_TOOLCHAIN=system` preserv
 the workflow's stable compiler, or nightly for the ARM64 emulated-TLS build.
 Slots are disabled to preserve artifact paths used by packaging. FreeBSD retains
 Cargo because there is no published native justrust client or hosted FreeBSD route.
-The compatibility script selects justrust only when `JCODE_CI_BUILD=1`, leaving
+The compatibility script selects justrust only when `KCODE_CI_BUILD=1`, leaving
 ordinary local compatibility builds unchanged.
 
 ## Hosted migration gates
 
 Inspection on October 14, 2026 found no justrust usage in the previous public
-release workflow and no `JCODE_API_KEY` repository secret. Hosted compilation is
+release workflow and no `KCODE_API_KEY` repository secret. Hosted compilation is
 not yet a safe replacement for these release environments:
 
 - Linux x86_64 assets intentionally build against glibc 2.17 in manylinux2014.
@@ -39,7 +39,7 @@ not yet a safe replacement for these release environments:
   `CARGO_PROFILE_RELEASE_OPT_LEVEL` override. A hosted migration must preserve
   level 3 explicitly, along with release metadata and the selected toolchain.
 
-Before enabling hosted, validate the actual Jcode executable's ABI/architecture,
+Before enabling hosted, validate the actual Kcode executable's ABI/architecture,
 release metadata, artifact paths/checksums, and native smoke tests. Configure CI
 account authentication via a repository secret only after the route is supported.
 Keep signing and publication separate from compilation and do not send deployment

@@ -11,7 +11,7 @@
     "The startup frame settles immediately instead of popping in over about 200ms, with session facts shown on the first frame",
     "The Overview widget stays visible after startup",
     "Onboarding is cleaner: side-by-side start choice, no starter prompt cards, and the home directory is labeled '~ (home)'",
-    "Onboarding detects accounts you are signed in with in Cursor, other AI tools, and stored Jcode agent logins",
+    "Onboarding detects accounts you are signed in with in Cursor, other AI tools, and stored Kcode agent logins",
     "Restored transcripts and the session picker preview no longer show a redundant 'tool:' summary line"
   ],
   "fixes": [

@@ -36,7 +36,7 @@ fn configure_system_allocator() {
     const M_ARENA_MAX: i32 = -8;
     const M_MMAP_THRESHOLD: i32 = -3;
 
-    let arena_max = parse_alloc_tuning_env("JCODE_GLIBC_ARENA_MAX", 4);
+    let arena_max = parse_alloc_tuning_env("KCODE_GLIBC_ARENA_MAX", 4);
     let _ = unsafe { mallopt(M_ARENA_MAX, arena_max) };
 
     // Pin the mmap threshold so large transient allocations (history JSON,
@@ -51,7 +51,7 @@ fn configure_system_allocator() {
     // alloc/free cycles (mmap/munmap syscalls + page faults each time) for
     // predictable, immediate memory return. For a long-running interactive
     // agent, lower steady-state RSS wins.
-    let mmap_threshold = parse_alloc_tuning_env("JCODE_GLIBC_MMAP_THRESHOLD", 256 * 1024);
+    let mmap_threshold = parse_alloc_tuning_env("KCODE_GLIBC_MMAP_THRESHOLD", 256 * 1024);
     let _ = unsafe { mallopt(M_MMAP_THRESHOLD, mmap_threshold) };
 }
 
@@ -87,7 +87,7 @@ fn main() -> Result<()> {
     // sized stack instead.
     const WINDOWS_MAIN_STACK_SIZE: usize = 8 * 1024 * 1024;
     match std::thread::Builder::new()
-        .name("jcode-main".to_string())
+        .name("kcode-main".to_string())
         .stack_size(WINDOWS_MAIN_STACK_SIZE)
         .spawn(run_main)?
         .join()
@@ -112,7 +112,7 @@ fn run_main() -> Result<()> {
     // check for updates, or emit first-run telemetry disclosure text into the
     // parent CLI's hook output.
     if let Some(source) = cli_launch_hint_source_invocation() {
-        return jcode::setup_hints::run_setup_hotkey(false, false, false, Some(&source));
+        return kcode::setup_hints::run_setup_hotkey(false, false, false, Some(&source));
     }
 
     // The macOS global-hotkey listener must run on the real main thread with a
@@ -121,34 +121,34 @@ fn run_main() -> Result<()> {
     // otherwise move execution onto a worker thread with no run loop and leave
     // the Cmd+; hotkey silently dead.
     if is_macos_hotkey_listener_invocation() {
-        return jcode::setup_hints::run_macos_hotkey_listener_main_thread();
+        return kcode::setup_hints::run_macos_hotkey_listener_main_thread();
     }
 
     // The generated LSUIElement helper hard-links this universal binary under
     // a dedicated executable name. Intercept that multicall entry point before
     // Tokio/CLI startup so AppKit and Notification Center stay on the real main
     // thread and the helper never initializes an agent session.
-    if jcode::cli::macos_notification_broker::is_invocation() {
-        return jcode::cli::macos_notification_broker::run();
+    if kcode::cli::macos_notification_broker::is_invocation() {
+        return kcode::cli::macos_notification_broker::run();
     }
 
     // Exit-mode hibernation waiter: stay tiny until a key press, then resume.
-    if jcode::cli::hibernate_wait::is_invocation() {
-        return jcode::cli::hibernate_wait::run();
+    if kcode::cli::hibernate_wait::is_invocation() {
+        return kcode::cli::hibernate_wait::run();
     }
 
     // Clients exec-reload too: reap git probes and other children a previous
     // image left running, before this image spawns anything of its own.
-    jcode::inherited_children::start();
+    kcode::inherited_children::start();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
 
-    runtime.block_on(async { jcode::run().await })
+    runtime.block_on(async { kcode::run().await })
 }
 
-/// True when invoked as `jcode setup-hotkey --listen-macos-hotkey`.
+/// True when invoked as `kcode setup-hotkey --listen-macos-hotkey`.
 fn is_macos_hotkey_listener_invocation() -> bool {
     args_are_macos_hotkey_listener(std::env::args().skip(1))
 }
@@ -243,12 +243,12 @@ mod tests {
         );
     }
 
-    fn jcode_binary() -> std::path::PathBuf {
+    fn kcode_binary() -> std::path::PathBuf {
         std::env::var("CARGO_BIN_EXE_jcode")
-            .or_else(|_| std::env::var("JCODE_BIN_PATH"))
+            .or_else(|_| std::env::var("KCODE_BIN_PATH"))
             .unwrap_or_else(|_| {
                 let mut path = std::env::current_dir().expect("current dir");
-                path.push("target/debug/jcode");
+                path.push("target/debug/kcode");
                 path.to_string_lossy().into_owned()
             })
             .into()
@@ -256,22 +256,22 @@ mod tests {
 
     #[test]
     fn version_prints_stable_output() {
-        let output = std::process::Command::new(jcode_binary())
+        let output = std::process::Command::new(kcode_binary())
             .args(["--version"])
             .output()
-            .expect("spawn jcode --version");
-        assert!(output.status.success(), "jcode --version failed: {output:?}");
+            .expect("spawn kcode --version");
+        assert!(output.status.success(), "kcode --version failed: {output:?}");
         let text = String::from_utf8_lossy(&output.stdout);
-        assert!(text.contains("jcode v"), "version prefix missing: {text}");
+        assert!(text.contains("kcode v"), "version prefix missing: {text}");
     }
 
     #[test]
     fn help_shows_usage_and_commands() {
-        let output = std::process::Command::new(jcode_binary())
+        let output = std::process::Command::new(kcode_binary())
             .args(["--help"])
             .output()
-            .expect("spawn jcode --help");
-        assert!(output.status.success(), "jcode --help failed: {output:?}");
+            .expect("spawn kcode --help");
+        assert!(output.status.success(), "kcode --help failed: {output:?}");
         let text = String::from_utf8_lossy(&output.stdout);
         assert!(text.contains("Usage:"), "missing Usage: in help: {text}");
         assert!(text.contains("Commands:"), "missing Commands: in help: {text}");

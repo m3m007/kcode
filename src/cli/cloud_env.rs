@@ -39,12 +39,12 @@ fn repository_root(path: &Path) -> Result<PathBuf> {
         anyhow::ensure!(root != home, "home is not a project");
     }
     anyhow::ensure!(
-        root != storage::jcode_dir()?,
+        root != storage::kcode_dir()?,
         "private state is not a project"
     );
     // No shell, hooks, or user-controlled commands are executed to resolve paths.
     anyhow::ensure!(root.join(".git").try_exists()?, "repository root required");
-    env::checked_path(&root, Path::new(".jcode/cloud-environment.json"))?;
+    env::checked_path(&root, Path::new(".kcode/cloud-environment.json"))?;
     Ok(root)
 }
 
@@ -159,7 +159,7 @@ fn exchange_bounded(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
-        let own_process_group = std::env::var_os("JCODE_CLOUD_ENV_SESSION").is_none();
+        let own_process_group = std::env::var_os("KCODE_CLOUD_ENV_SESSION").is_none();
         // Keep fulfillment inside the TUI-owned disconnect cancellation group.
         if own_process_group {
             command.process_group(0);
@@ -297,7 +297,7 @@ fn send(root: &Path, target: &Target, request: &Request, source: Source) -> Resu
 }
 
 fn callback_target(host: String) -> Result<Target> {
-    let remote_binary = match std::env::var("JCODE_SSH_BINARY") {
+    let remote_binary = match std::env::var("KCODE_SSH_BINARY") {
         Ok(binary) => Some(binary).filter(|binary| !binary.trim().is_empty()),
         Err(std::env::VarError::NotPresent) => None,
         Err(std::env::VarError::NotUnicode(_)) => bail!("remote binary encoding invalid"),
@@ -311,11 +311,11 @@ fn callback_target(host: String) -> Result<Target> {
 
 fn fulfill(session: &str, request: Request) -> Result<Status> {
     anyhow::ensure!(
-        std::env::var_os("JCODE_CLOUD_ENV_SESSION").as_deref()
+        std::env::var_os("KCODE_CLOUD_ENV_SESSION").as_deref()
             == Some(std::ffi::OsStr::new(session)),
         "no handoff grant"
     );
-    let host = std::env::var("JCODE_SSH_REMOTE").context("no target grant")?;
+    let host = std::env::var("KCODE_SSH_REMOTE").context("no target grant")?;
     let lease = storage::read_session_lease(session).context("no lease")?;
     let root = repository_root(&env::validate_lease(
         &lease,
@@ -543,15 +543,15 @@ mod tests {
     fn callback_rejects_non_unicode_binary_without_leaking_it() {
         use std::os::unix::ffi::OsStringExt;
         let _lock = storage::lock_test_env();
-        let previous = std::env::var_os("JCODE_SSH_BINARY");
+        let previous = std::env::var_os("KCODE_SSH_BINARY");
         crate::env::set_var(
-            "JCODE_SSH_BINARY",
+            "KCODE_SSH_BINARY",
             std::ffi::OsString::from_vec(b"secret\xff".to_vec()),
         );
         let result = callback_target("test-host".into());
         match previous {
-            Some(value) => crate::env::set_var("JCODE_SSH_BINARY", value),
-            None => crate::env::remove_var("JCODE_SSH_BINARY"),
+            Some(value) => crate::env::set_var("KCODE_SSH_BINARY", value),
+            None => crate::env::remove_var("KCODE_SSH_BINARY"),
         }
         let error = result.expect_err("invalid encoding must fail");
         assert_eq!(error.to_string(), "remote binary encoding invalid");
@@ -635,7 +635,7 @@ mod tests {
         };
         assert!(receive(payload).is_err());
         assert!(!root.join("good").exists());
-        assert!(!root.join(".jcode").exists());
+        assert!(!root.join(".kcode").exists());
     }
     #[test]
     #[cfg(unix)]
@@ -671,7 +671,7 @@ mod tests {
         };
         assert!(receive(payload).is_err());
         assert!(!root.join("allowed").exists());
-        assert!(!root.join(".jcode").exists());
+        assert!(!root.join(".kcode").exists());
     }
 
     #[test]
@@ -715,14 +715,14 @@ mod tests {
         impl Drop for Restore {
             fn drop(&mut self) {
                 if let Some(value) = &self.0 {
-                    crate::env::set_var("JCODE_CLOUD_ENV_SESSION", value);
+                    crate::env::set_var("KCODE_CLOUD_ENV_SESSION", value);
                 } else {
-                    crate::env::remove_var("JCODE_CLOUD_ENV_SESSION");
+                    crate::env::remove_var("KCODE_CLOUD_ENV_SESSION");
                 }
             }
         }
-        let _restore = Restore(std::env::var_os("JCODE_CLOUD_ENV_SESSION"));
-        crate::env::set_var("JCODE_CLOUD_ENV_SESSION", "test-session");
+        let _restore = Restore(std::env::var_os("KCODE_CLOUD_ENV_SESSION"));
+        crate::env::set_var("KCODE_CLOUD_ENV_SESSION", "test-session");
         let mut command = Command::new("sh");
         command.args(["-c", "ps -o pgid= -p $$"]);
         let output =
@@ -741,18 +741,18 @@ mod tests {
         impl Drop for Restore {
             fn drop(&mut self) {
                 if let Some(value) = &self.0 {
-                    crate::env::set_var("JCODE_SSH_BINARY", value);
+                    crate::env::set_var("KCODE_SSH_BINARY", value);
                 } else {
-                    crate::env::remove_var("JCODE_SSH_BINARY");
+                    crate::env::remove_var("KCODE_SSH_BINARY");
                 }
             }
         }
-        let _restore = Restore(std::env::var_os("JCODE_SSH_BINARY"));
-        crate::env::set_var("JCODE_SSH_BINARY", "/custom/remote-jcode");
+        let _restore = Restore(std::env::var_os("KCODE_SSH_BINARY"));
+        crate::env::set_var("KCODE_SSH_BINARY", "/custom/remote-kcode");
         let target = callback_target("test-host".into()).unwrap();
         assert_eq!(
             target.remote_binary.as_deref(),
-            Some("/custom/remote-jcode")
+            Some("/custom/remote-kcode")
         );
         let command = target
             .remote_command("test-host", &["cloud", "env", "receive"])
@@ -760,7 +760,7 @@ mod tests {
         assert!(
             command
                 .get_args()
-                .any(|arg| arg.to_string_lossy().contains("/custom/remote-jcode"))
+                .any(|arg| arg.to_string_lossy().contains("/custom/remote-kcode"))
         );
     }
     #[test]

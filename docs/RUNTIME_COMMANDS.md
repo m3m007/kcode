@@ -5,8 +5,8 @@ capability probe advertises it. Older daemons return an explicit unsupported err
 This is additive API v1.10, available in both the Rust and TypeScript SDKs.
 
 ```rust,no_run
-use jcode_sdk::{JcodeClient, RuntimeCommand};
-# fn example(client: &JcodeClient, session: &str) -> jcode_sdk::Result<()> {
+use kcode_sdk::{KcodeClient, RuntimeCommand};
+# fn example(client: &KcodeClient, session: &str) -> kcode_sdk::Result<()> {
 let result = client.runtime_command(session, RuntimeCommand::Memory, vec!["status".into()])?;
 println!("{}", result.message);
 # Ok(()) }

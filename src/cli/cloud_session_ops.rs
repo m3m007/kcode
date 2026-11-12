@@ -89,11 +89,11 @@ pub(super) fn fork(
 
 fn target() -> super::Target {
     super::Target {
-        transport: match std::env::var("JCODE_CLOUD_TRANSPORT") {
+        transport: match std::env::var("KCODE_CLOUD_TRANSPORT") {
             Ok(value) => Some(value).filter(|v| !v.trim().is_empty()),
             Err(std::env::VarError::NotPresent) => None,
             Err(std::env::VarError::NotUnicode(_)) => {
-                crate::logging::info("Ignoring non-Unicode JCODE_CLOUD_TRANSPORT");
+                crate::logging::info("Ignoring non-Unicode KCODE_CLOUD_TRANSPORT");
                 None
             }
         },
@@ -225,7 +225,7 @@ fn checked_id(id: &str) -> Result<()> {
 
 fn run_directory(id: &str) -> Result<PathBuf> {
     checked_id(id)?;
-    Ok(storage::jcode_dir()?.join("cloud_runs").join(id))
+    Ok(storage::kcode_dir()?.join("cloud_runs").join(id))
 }
 
 fn lock_file(path: &Path) -> Result<File> {
@@ -393,7 +393,7 @@ pub(super) fn run_detached(reference: &str, message: &str) -> Result<()> {
         command
             .arg("-c")
             .arg(SUPERVISOR)
-            .arg("jcode-cloud-run")
+            .arg("kcode-cloud-run")
             .arg(std::env::current_exe()?)
             .arg(&id)
             .arg(&exit_path)
@@ -506,7 +506,7 @@ mod tests {
     fn supervisor_preserves_literal_prompt_and_failed_exit() {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
-        let executable = dir.path().join("fake jcode");
+        let executable = dir.path().join("fake kcode");
         std::fs::write(&executable, "#!/bin/sh\nprintf '%s' \"$8\"\nexit 7\n").unwrap();
         std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
         let exit = dir.path().join("exit status");

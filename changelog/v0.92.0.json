@@ -4,7 +4,7 @@
   "title": "Codemode and smarter model defaults",
   "highlights": [
     "Opt-in codemode tool runs JavaScript in an embedded sandbox that can chain, loop over, and parallelize other tool calls in one step",
-    "Every provider, including OpenRouter, Bedrock, Grok Build, Copilot, and the Jcode subscription, now defaults to its newest flagship model instead of a stale or merely newest release",
+    "Every provider, including OpenRouter, Bedrock, Grok Build, Copilot, and the Kcode subscription, now defaults to its newest flagship model instead of a stale or merely newest release",
     "The browser bridge checks for updates and installs them automatically"
   ],
   "improvements": [

@@ -1,7 +1,7 @@
 # Cloud latency diagnostics
 
 Cloud operations emit info-level, content-free timing records to the ordinary
-Jcode logs in `$JCODE_HOME/logs/jcode-YYYY-MM-DD.log` (default `~/.jcode/logs`).
+Kcode logs in `$KCODE_HOME/logs/kcode-YYYY-MM-DD.log` (default `~/.kcode/logs`).
 They do not require trace mode. Each process writes its own records, so a local
 client and a cloud daemon must both be updated to see both sides of a resume.
 A new local binary does not update an already-running cloud daemon.
@@ -12,7 +12,7 @@ From the repository root:
 
 ```bash
 python3 scripts/cloud_latency_report.py --slow-ms 1000
-python3 scripts/cloud_latency_report.py ~/.jcode/logs/jcode-2026-11-07.log
+python3 scripts/cloud_latency_report.py ~/.kcode/logs/kcode-2026-11-07.log
 python3 scripts/cloud_latency_report.py downloaded-cloud-daemon.log --slow-ms 250
 python3 scripts/cloud_latency_report.py --since 2026-11-08T00:28:00 --until 2026-11-08T00:38:00
 ```
@@ -87,7 +87,7 @@ than timed and logged individually. Changed-session and HTTP timings remain.
 A repeatable no-network filesystem benchmark is available with:
 
 ```bash
-justrust test --remote -p jcode-base --lib benchmark_unchanged_reconciliation -- --ignored --nocapture
+justrust test --remote -p kcode-base --lib benchmark_unchanged_reconciliation -- --ignored --nocapture
 ```
 
 It measures 1,300 unchanged sessions, not upload or end-to-end cloud latency.
@@ -101,7 +101,7 @@ retries. HTTP/2 and later multiplexed responses skip this HTTP/1-specific drain.
 older builds that stopped at response headers. The controlled keep-alive benchmark:
 
 ```bash
-justrust test --remote -p jcode-base --lib benchmark_mobile_upload_keep_alive -- --ignored --nocapture
+justrust test --remote -p kcode-base --lib benchmark_mobile_upload_keep_alive -- --ignored --nocapture
 ```
 
 It injects a 30ms per-connection delay and an 8ms body delay. Connection counts
@@ -245,7 +245,7 @@ device was connected and
 usbmuxd was inactive. Real-device install/paint and end-to-end command timing
 remain excluded from this rollout.
 
-The separate `jcode-mobile` repository's phone transcript transport now pools
+The separate `kcode-mobile` repository's phone transcript transport now pools
 HTTP connections too (commit `a98b496`). Eight actual list calls in a loopback
 fixture with 30ms connection setup and 8ms body delay improved from median
 315.039ms/eight connections to 97.462ms/one connection. All 85 phone-core tests

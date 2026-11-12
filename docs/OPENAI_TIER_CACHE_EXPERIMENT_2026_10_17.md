@@ -15,7 +15,7 @@ effort (`low`) were byte-identical. Only `service_tier` changed. Each request
 asked for `OK`, used `store: false`, and waited for `response.completed` before
 the next request, with a three-second inter-request delay.
 
-The handshake matched Jcode's OAuth transport:
+The handshake matched Kcode's OAuth transport:
 
 ```text
 originator: codex_cli_rs
@@ -24,7 +24,7 @@ OpenAI-Beta: responses_websockets=2026-02-06
 
 No `previous_response_id` or `prompt_cache_key` was supplied. Each request sent
 the complete identical input. This isolates upstream prompt-cache behavior from
-Jcode's incremental-input and prewarm eligibility checks. Usage was taken from
+Kcode's incremental-input and prewarm eligibility checks. Usage was taken from
 `response.completed.response.usage.input_tokens_details.cached_tokens`.
 
 ## Results
@@ -46,7 +46,7 @@ Jcode's incremental-input and prewarm eligibility checks. Usage was taken from
 A subsequent request with the literal wire value `fast` returned HTTP-style
 status 400, `Unsupported service_tier: fast`, and the server closed the socket.
 The nine successful measurements above were saved before that negative test.
-Jcode should continue normalizing the Fast UI label to `priority` on the wire.
+Kcode should continue normalizing the Fast UI label to `priority` on the wire.
 
 ### Ultrafast first, fresh prefix, 12,045 input tokens per request
 
@@ -68,7 +68,7 @@ All nine requests in the reverse-order run completed successfully.
 
 A third connection used a fresh prefix, then sent each later request with
 `previous_response_id` from the immediately preceding response and only a new
-short user input (`Reply with only OK.`). This mirrors Jcode's incremental
+short user input (`Reply with only OK.`). This mirrors Kcode's incremental
 WebSocket conversation shape rather than resending the full prompt.
 
 | Request | Requested tier | Total input tokens | Cached input tokens |
@@ -87,7 +87,7 @@ confirmation limitation applies.
 
 ## Application-level switching acceptance
 
-The updated Jcode binary was run on an isolated daemon socket with real OpenAI
+The updated Kcode binary was run on an isolated daemon socket with real OpenAI
 OAuth requests, independently of the shared daemon. A turn executed a harmless
 `bash` call containing `sleep 8`. While that tool was running and the agent's
 turn remained active, two consecutive protocol requests configured Fast and

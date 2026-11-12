@@ -112,7 +112,7 @@ jobs:
           RUSTC="$(rustup which rustc)"
           export RUSTC
           # Hosted CI has no justrust account. Use its supported local CI path.
-          justrust build --local --locked --release --target x86_64-unknown-linux-gnu -p jcode --bin jcode
+          justrust build --local --locked --release --target x86_64-unknown-linux-gnu -p kcode --bin kcode
 
       - name: Run all acceptance layers twice
         timeout-minutes: 40
@@ -121,7 +121,7 @@ jobs:
           set -euo pipefail
           test "$(id -u)" -ne 0
           python3 scripts/test_cloud_acceptance.py \
-            --binary "$GITHUB_WORKSPACE/target/x86_64-unknown-linux-gnu/release/jcode" \
+            --binary "$GITHUB_WORKSPACE/target/x86_64-unknown-linux-gnu/release/kcode" \
             --repeat 2 \
             --artifacts "$RUNNER_TEMP/cloud-acceptance"
 

@@ -19,11 +19,11 @@ mod search_speed_tests;
 Run from the existing checkout, using the same host, profile, source tree and sample count before and after optimization:
 
 ```bash
-justrust test -p jcode-tui --lib search_speed_fixture_preserves_typo_and_absent_semantics -- --test-threads=1
-justrust test -p jcode-tui --lib benchmark_resume_search_speed -- --ignored --nocapture --test-threads=1
+justrust test -p kcode-tui --lib search_speed_fixture_preserves_typo_and_absent_semantics -- --test-threads=1
+justrust test -p kcode-tui --lib benchmark_resume_search_speed -- --ignored --nocapture --test-threads=1
 ```
 
-The default is two samples per case, intended to keep baseline execution below 15 seconds, excluding compilation and hosted transfer. This is a target, not a measured claim. For a quick smoke run set `JCODE_SEARCH_SPEED_SAMPLES=1`. For a more stable follow-up set it to 5 or 10. The accepted range is clamped to 1 through 100. Confirm that the remote runner forwards this variable before relying on a nondefault count. Every output row records the actual sample count.
+The default is two samples per case, intended to keep baseline execution below 15 seconds, excluding compilation and hosted transfer. This is a target, not a measured claim. For a quick smoke run set `KCODE_SEARCH_SPEED_SAMPLES=1`. For a more stable follow-up set it to 5 or 10. The accepted range is clamped to 1 through 100. Confirm that the remote runner forwards this variable before relying on a nondefault count. Every output row records the actual sample count.
 
 Do not run the full ignored suite by accident. Other ignored benchmarks have different fixtures and runtime budgets. Do not run simultaneous builds or timing workloads. Preserve the complete justrust output rather than piping away diagnostic or timing context.
 
@@ -41,7 +41,7 @@ Each output line begins with `SEARCH_SPEED ` and contains a JSON object. Duratio
 
 The regular fixture test checks that the typo scores positively, the absent query scores zero, and a three-session worker returns the expected complete hit set or no hits. The ignored benchmark additionally asserts exact metadata sizes, nonliteral rank evidence, correct score polarity for every session and sample, complete worker membership, first-result presence or absence, warm transcript absence, UI query state, no UI matches and no fuzzy worker started from key handling. Timings are only emitted after their associated assertions succeed.
 
-These are performance measurements, not runtime-daemon acceptance tests. They invoke the newly built test binary directly and do not depend on which long-lived Jcode daemon is active. They do not exercise terminal drawing, preview loading, remote SSH, real user histories, cold storage or transcript I/O in the worker matrix.
+These are performance measurements, not runtime-daemon acceptance tests. They invoke the newly built test binary directly and do not depend on which long-lived Kcode daemon is active. They do not exercise terminal drawing, preview loading, remote SSH, real user histories, cold storage or transcript I/O in the worker matrix.
 
 ## Recording a valid comparison
 
@@ -50,7 +50,7 @@ Record revision and dirty state (`git rev-parse HEAD` and `git status --short`),
 ## Verified baseline
 
 - Run ID: `20261102-191342864-2920165`, executed on hosted justrust, default test profile.
-- Evidence: coordinator's complete task log `/tmp/jcode-bg-tasks/62284564am.output`, exit code 0, one benchmark passed and no failed tests.
+- Evidence: coordinator's complete task log `/tmp/kcode-bg-tasks/62284564am.output`, exit code 0, one benchmark passed and no failed tests.
 - Toolchain: `nightly-2026-10-08`. The log does not identify the hosted CPU, so the local laptop CPU must not be substituted.
 - Source context: benchmark commit `6b60aa721` plus coordinator's module-wiring edit in `transcript_search.rs`. The coordinator confirmed the proposed optimization was not wired for this baseline. An exact source snapshot and full dirty-state listing were not embedded in the task log.
 - Two samples per case. Harness suite time: **2090.825399 ms**. Hosted overall time was 11.9 s, including compilation and synchronization, not the search suite's latency.
@@ -79,9 +79,9 @@ These are a short baseline, not robust tail estimates. With two samples, the emi
 
 ## Verified final candidate comparison
 
-- Benchmark run: `20261102-192422604-2989590`, hosted justrust, same default test profile, same two samples per case and `nightly-2026-10-08`. Evidence: `/tmp/jcode-bg-tasks/254405xn67.output`, exit code 0, one benchmark passed. Search suite time was **347.492251 ms**, while total hosted time was 7.4 s including compilation and synchronization.
+- Benchmark run: `20261102-192422604-2989590`, hosted justrust, same default test profile, same two samples per case and `nightly-2026-10-08`. Evidence: `/tmp/kcode-bg-tasks/254405xn67.output`, exit code 0, one benchmark passed. Search suite time was **347.492251 ms**, while total hosted time was 7.4 s including compilation and synchronization.
 - The same task log records **17 scorer tests passed** in run `20261102-192414531-2986532`. The coordinator subsequently confirmed **all 269 picker tests passed** in hosted run `20261102-192504444-2994712`, and **strict fuzzy-crate Clippy passed** in run `20261102-192506201-2994711`. These test and lint results do not by themselves establish a live TUI acceptance workflow or a successful runtime reload.
-- Candidate source context supplied by the coordinator: bounded query-local word-score reuse, with the cache's hot loop moved from the opt-level-0 TUI into the existing opt-level-3 `jcode-fuzzy` crate. No build-profile settings were changed. Concurrent token-evidence cache and warmup implementation changes were present in the same tree. The task log does not embed the complete source snapshot, dirty state or hosted CPU identity.
+- Candidate source context supplied by the coordinator: bounded query-local word-score reuse, with the cache's hot loop moved from the opt-level-0 TUI into the existing opt-level-3 `kcode-fuzzy` crate. No build-profile settings were changed. Concurrent token-evidence cache and warmup implementation changes were present in the same tree. The task log does not embed the complete source snapshot, dirty state or hosted CPU identity.
 
 The following are observed p50 ratios from these short runs, not robust population estimates or a guarantee for real user histories. An absent query has no first result in either run. Worker measurements exclude debounce in both runs.
 
@@ -104,7 +104,7 @@ Baseline warm decoded transcript samples were `[3.420839, 3.5077]` ms. The candi
 
 ### Interim regression and correction
 
-An earlier candidate, benchmark run `20261102-192207121-2969014` in `/tmp/jcode-bg-tasks/114439xz9u.output`, passed its assertions but was a performance regression overall: 2654.096908 ms suite time, and absent worker completion at 100 x 64 KiB was 478.087235 ms versus the 229.394199 ms baseline. Typo metadata improved only modestly to 180.492267 ms. The coordinator identified duplicate metadata work in the concurrent resident/cold fallback path and costly cache-loop execution in the opt-level-0 TUI. The final candidate above followed duplicate-pass fixes and moving the hot loop to the already optimized fuzzy crate. The earlier run was rejected as a performance result to ship, not hidden or relabeled as a successful optimization. Its correctness assertions did not fail.
+An earlier candidate, benchmark run `20261102-192207121-2969014` in `/tmp/kcode-bg-tasks/114439xz9u.output`, passed its assertions but was a performance regression overall: 2654.096908 ms suite time, and absent worker completion at 100 x 64 KiB was 478.087235 ms versus the 229.394199 ms baseline. Typo metadata improved only modestly to 180.492267 ms. The coordinator identified duplicate metadata work in the concurrent resident/cold fallback path and costly cache-loop execution in the opt-level-0 TUI. The final candidate above followed duplicate-pass fixes and moving the hot loop to the already optimized fuzzy crate. The earlier run was rejected as a performance result to ship, not hidden or relabeled as a successful optimization. Its correctness assertions did not fail.
 
 ### Complete candidate JSON
 

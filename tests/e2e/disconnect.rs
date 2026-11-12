@@ -1,7 +1,7 @@
 //! Desktop and remote abrupt disconnects through the real server and durable storage.
 
 use crate::test_support::*;
-use jcode::session::SessionStatus;
+use kcode::session::SessionStatus;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 struct StreamingProvider;

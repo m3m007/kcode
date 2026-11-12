@@ -71,7 +71,7 @@ pub(crate) fn run_migrate(
     let capabilities = retry_ssh(&host, "group protocol probe", || {
         target.run_remote(&host, &["cloud", "group-protocol"], None)
     })
-    .context("cloud host must support coordinated migration; update its jcode")?;
+    .context("cloud host must support coordinated migration; update its kcode")?;
     let version: serde_json::Value = serde_json::from_slice(&capabilities)?;
     if version.get("version").and_then(|v| v.as_u64()) != Some(GROUP_VERSION as u64) {
         bail!("cloud host does not support coordinated migration protocol {GROUP_VERSION}");
@@ -269,7 +269,7 @@ pub(crate) fn run_migrate(
 fn write_lease(lease: &storage::SessionLease) -> Result<()> {
     checked_id(&lease.session_id)?;
     durable_json(
-        &storage::jcode_dir()?
+        &storage::kcode_dir()?
             .join("session_leases")
             .join(format!("{}.json", lease.session_id)),
         lease,
@@ -287,7 +287,7 @@ fn transfer_and_verify(
         let mut baselines = Vec::new();
         for account in &root(group)?.manifest.auth_accounts {
             let payload = transfer::export_cloud_account_at(
-                &storage::jcode_dir()?,
+                &storage::kcode_dir()?,
                 account.provider,
                 Some(&account.label),
             )?;
@@ -380,7 +380,7 @@ fn report(group: &Group, dry_run: bool) -> Result<MoveReport> {
         repo_root: manifest.repo.as_ref().map(|r| r.root.clone()),
         snapshot: manifest.repo.as_ref().map(|r| r.snapshot.clone()),
         dry_run,
-        attach_command: format!("jcode cloud attach --session {}", group.coordinator),
+        attach_command: format!("kcode cloud attach --session {}", group.coordinator),
         return_command: "Group return is not implemented; do not return individual members".into(),
     })
 }

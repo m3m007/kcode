@@ -176,7 +176,7 @@ fn group_guidance_defers_worker_resume_until_shared_setup() {
     assert!(coordinator.contains("group machine handoff"));
     assert!(coordinator.contains("Then explicitly resume"));
     assert!(coordinator.contains("Group return is not implemented"));
-    assert!(!coordinator.contains("jcode cloud return"));
+    assert!(!coordinator.contains("kcode cloud return"));
     let worker = group_arrival_notice(&group.members[1].manifest, &group.coordinator, &ids);
     assert!(worker.contains("do not independently repeat workspace setup"));
     assert!(worker.contains("Remain paused"));

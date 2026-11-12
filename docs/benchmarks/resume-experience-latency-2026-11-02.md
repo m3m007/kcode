@@ -27,7 +27,7 @@ Historical results and methodology remain in `resume-render-navigation-2026-10-3
 
 Cold resident cases use distinct per-session/per-sample content and clear public renderer/highlight caches. They do not claim a cold filesystem, network, or every process-global cache. Resident fixtures suppress workspace/filesystem probing; disk-backed cases are separate.
 
-`session_picker/benchmark_io.rs` uses temporary real Jcode snapshots and Codex JSONL files, actual discovery/loaders, and a 2,048-message fixture:
+`session_picker/benchmark_io.rs` uses temporary real Kcode snapshots and Codex JSONL files, actual discovery/loaders, and a 2,048-message fixture:
 
 - Transcript **data** readiness, not rendered preview readiness.
 - Metadata query typing and complete background transcript matching, including debounce and a middle-only needle outside the preview window.
@@ -55,11 +55,11 @@ python3 scripts/bench_resume_suite.py --samples 20
 # More useful tail exploration, larger runtime:
 python3 scripts/bench_resume_suite.py --samples 100
 # Also measure real PTY startup and cancellation on a specific installed binary:
-python3 scripts/bench_resume_suite.py --samples 20 --binary /absolute/path/to/jcode
+python3 scripts/bench_resume_suite.py --samples 20 --binary /absolute/path/to/kcode
 python3 -m unittest scripts/test_bench_resume_suite.py
 ```
 
-The runner uses hosted `justrust`, the `selfdev` profile (currently `opt-level = 0`, not an optimized distribution build), serial ignored tests, and retains unfiltered raw logs plus `metadata.json` and `results.json` under `target/resume-latency/`. It records revision, dirty state, profile, sample request, and measurement boundaries. Cargo `--config env.JCODE_RESUME_BENCH_SAMPLES` forwards sample configuration to hosted test execution rather than relying on arbitrary remote environment forwarding. Optional PTY measurements retain their separate raw logs. A failed command or absent benchmark rows fails the suite instead of reporting empty success.
+The runner uses hosted `justrust`, the `selfdev` profile (currently `opt-level = 0`, not an optimized distribution build), serial ignored tests, and retains unfiltered raw logs plus `metadata.json` and `results.json` under `target/resume-latency/`. It records revision, dirty state, profile, sample request, and measurement boundaries. Cargo `--config env.KCODE_RESUME_BENCH_SAMPLES` forwards sample configuration to hosted test execution rather than relying on arbitrary remote environment forwarding. Optional PTY measurements retain their separate raw logs. A failed command or absent benchmark rows fails the suite instead of reporting empty success.
 
 ## Baseline from the expanded suite
 
@@ -86,9 +86,9 @@ Other surfaces, milliseconds:
 | Ten navigation events, a frame each, total throughput | 63.465 | 63.633 |
 | Ten navigation events, one final frame, total throughput | 6.333 | 6.352 |
 | 800-line tool-output first frame, 120x40 | 8.287 | 8.490 |
-| Jcode snapshot to transcript data ready, modeled polling | 16.117 | 16.133 |
+| Kcode snapshot to transcript data ready, modeled polling | 16.117 | 16.133 |
 | Codex JSONL to transcript data ready, modeled polling | 16.111 | 16.117 |
-| Jcode complete transcript search, including debounce | 193.732 | 193.745 |
+| Kcode complete transcript search, including debounce | 193.732 | 193.745 |
 | Codex complete transcript search, including debounce | 176.876 | 176.893 |
 
 Interpretation and next targets:

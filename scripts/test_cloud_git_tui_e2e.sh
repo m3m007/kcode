@@ -2,9 +2,9 @@
 # Exercise the real SSH TUI with independent local and remote Git checkouts.
 # Everything, including SSH keys/configuration and both daemons, is isolated.
 set -euo pipefail
-: "${JCODE_BIN:?Set JCODE_BIN to the rebuilt jcode binary}"
-JCODE_BIN=$(realpath "$JCODE_BIN")
-W=$(mktemp -d "${JCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-git-tui.XXXXXX")
+: "${KCODE_BIN:?Set KCODE_BIN to the rebuilt kcode binary}"
+KCODE_BIN=$(realpath "$KCODE_BIN")
+W=$(mktemp -d "${KCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-git-tui.XXXXXX")
 SSH_PORT=${SSH_PORT:-22928}
 MODEL_PORT=${MODEL_PORT:-18928}
 TMUX_SOCK=$W/tmux.sock
@@ -13,8 +13,8 @@ cleanup() {
     tmux -S "$TMUX_SOCK" kill-server 2>/dev/null || true
     if [[ -f $W/ssh/pid ]]; then kill "$(cat "$W/ssh/pid")" 2>/dev/null || true; fi
     if [[ -n ${MODEL_PID:-} ]]; then kill "$MODEL_PID" 2>/dev/null || true; fi
-    env -u JCODE_SOCKET -u JCODE_SESSION_ID JCODE_HOME="$W/local-home" JCODE_RUNTIME_DIR="$W/local-run" "$JCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
-    env -u JCODE_SOCKET -u JCODE_SESSION_ID JCODE_HOME="$W/remote-home" JCODE_RUNTIME_DIR="$W/remote-run" "$JCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
+    env -u KCODE_SOCKET -u KCODE_SESSION_ID KCODE_HOME="$W/local-home" KCODE_RUNTIME_DIR="$W/local-run" "$KCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
+    env -u KCODE_SOCKET -u KCODE_SESSION_ID KCODE_HOME="$W/remote-home" KCODE_RUNTIME_DIR="$W/remote-run" "$KCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 fail() {
@@ -56,11 +56,11 @@ EOF
 chmod +x "$W/bin/ssh"
 cat > "$W/remote-shell" <<EOF
 #!/usr/bin/env bash
-export JCODE_HOME='$W/remote-home' JCODE_RUNTIME_DIR='$W/remote-run'
-export JCODE_NO_TELEMETRY=1 JCODE_NO_AUTO_UPDATE=1
-export JCODE_OPENAI_COMPAT_API_BASE='http://127.0.0.1:$MODEL_PORT/v1'
-export OPENAI_COMPAT_API_KEY=x JCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model
-unset JCODE_SOCKET JCODE_SESSION_ID
+export KCODE_HOME='$W/remote-home' KCODE_RUNTIME_DIR='$W/remote-run'
+export KCODE_NO_TELEMETRY=1 KCODE_NO_AUTO_UPDATE=1
+export KCODE_OPENAI_COMPAT_API_BASE='http://127.0.0.1:$MODEL_PORT/v1'
+export OPENAI_COMPAT_API_KEY=x KCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model
+unset KCODE_SOCKET KCODE_SESSION_ID
 if [[ -e '$W/ssh-unavailable' ]]; then exit 43; fi
 exec bash -c "\${SSH_ORIGINAL_COMMAND:?}"
 EOF
@@ -85,20 +85,20 @@ PATH="$W/bin:$PATH" ssh -o BatchMode=yes cloud-git-fixture 'printf fixture-ready
 # By default, emulate /cloud's explicit source metadata from a non-repo launch
 # directory. SOURCE_MODE=launch checks generic --ssh's launch-dir fallback too.
 launch_dir=$W
-launch_args=(env -u JCODE_SOCKET -u JCODE_SESSION_ID -u JCODE_SSH_LOCAL_WORKING_DIR
-    "PATH=$W/bin:$PATH" "JCODE_HOME=$W/local-home" "JCODE_RUNTIME_DIR=$W/local-run"
-    JCODE_NO_AUTO_UPDATE=1 JCODE_NO_TELEMETRY=1)
+launch_args=(env -u KCODE_SOCKET -u KCODE_SESSION_ID -u KCODE_SSH_LOCAL_WORKING_DIR
+    "PATH=$W/bin:$PATH" "KCODE_HOME=$W/local-home" "KCODE_RUNTIME_DIR=$W/local-run"
+    KCODE_NO_AUTO_UPDATE=1 KCODE_NO_TELEMETRY=1)
 if [[ ${SOURCE_MODE:-handoff} == launch ]]; then
     launch_dir=$W/local-repo
     local_label='Local (launch dir):'
     local_workspace_label='Local:'
 else
-    launch_args+=("JCODE_SSH_LOCAL_WORKING_DIR=$W/local-repo")
+    launch_args+=("KCODE_SSH_LOCAL_WORKING_DIR=$W/local-repo")
     local_label='Local:'
     local_workspace_label='Local (source):'
 fi
-launch_args+=("$JCODE_BIN" --no-update --no-selfdev --ssh cloud-git-fixture
-    --ssh-binary "$JCODE_BIN" --remote-working-dir "$W/remote-repo")
+launch_args+=("$KCODE_BIN" --no-update --no-selfdev --ssh cloud-git-fixture
+    --ssh-binary "$KCODE_BIN" --remote-working-dir "$W/remote-repo")
 printf -v launch 'cd %q && ' "$launch_dir"
 printf -v launch_command '%q ' "${launch_args[@]}"
 launch+=$launch_command
@@ -120,14 +120,14 @@ grep -Fq remote-only.txt "$W/frame.txt" || fail 'remote state disappeared when l
 grep -Fq 'Cloud VM:' "$W/frame.txt" || fail 'cloud source is not labeled'
 grep -Fq "$local_label" "$W/frame.txt" || fail 'local source is not labeled correctly'
 cp "$W/frame.txt" "$W/initial-frame.txt"
-echo 'JCODE_CHECKPOINT {"message":"Both repository sources and initial changes visible"}'
+echo 'KCODE_CHECKPOINT {"message":"Both repository sources and initial changes visible"}'
 printf 'remote refresh\n' > "$W/remote-repo/remote-later.txt"
 printf 'local refresh\n' > "$W/local-repo/local-later.txt"
 wait_for remote-later.txt
 wait_for local-later.txt
 grep -Fq remote-later.txt "$W/frame.txt" || fail 'refreshed states not visible together'
 cp "$W/frame.txt" "$W/refreshed-frame.txt"
-echo 'JCODE_CHECKPOINT {"message":"Both repository sources refreshed after independent edits"}'
+echo 'KCODE_CHECKPOINT {"message":"Both repository sources refreshed after independent edits"}'
 rm -- "$W/local-repo/local-only.txt" "$W/local-repo/local-later.txt" \
     "$W/remote-repo/remote-only.txt" "$W/remote-repo/remote-later.txt"
 clean=false
@@ -153,7 +153,7 @@ if [[ ${EXPECT_CLOUD_STATUS:-0} == 1 ]]; then
     grep -Fq 'Cloud VM: main clean' "$W/frame.txt" || fail 'cloud card hides repository status'
     grep -Fq "$local_label main clean" "$W/frame.txt" || fail 'cloud card hides local repository status'
     cp "$W/frame.txt" "$W/telemetry-frame.txt"
-    echo 'JCODE_CHECKPOINT {"message":"Live cloud resource, connection, lifecycle and workspace sections visible"}'
+    echo 'KCODE_CHECKPOINT {"message":"Live cloud resource, connection, lifecycle and workspace sections visible"}'
     # Reject new read-only probes, without interrupting the already-open native
     # protocol bridge. Old values must become explicitly stale, not current zeroes.
     touch "$W/ssh-unavailable"
@@ -164,6 +164,6 @@ if [[ ${EXPECT_CLOUD_STATUS:-0} == 1 ]]; then
     wait_for 'Connection: Ready'
     if grep -Fq 'stale' "$W/frame.txt"; then fail 'successful telemetry still marked stale'; fi
     cp "$W/frame.txt" "$W/recovered-frame.txt"
-    echo 'JCODE_CHECKPOINT {"message":"Telemetry failure marked stale and recovered on next successful probe"}'
+    echo 'KCODE_CHECKPOINT {"message":"Telemetry failure marked stale and recovered on next successful probe"}'
 fi
 printf 'PASS: independent local and remote changes visible and refreshed (artifacts: %s)\n' "$W"

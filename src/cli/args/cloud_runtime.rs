@@ -11,10 +11,10 @@ pub(crate) enum CloudRuntimeCommand {
     /// `--reload` hands the daemon off once no session is mid-turn.
     #[command(group(clap::ArgGroup::new("source").required(true).args(["artifact", "from_source"])))]
     Push {
-        /// Compatible jcode-linux-x86_64.tar.gz package, not a laptop executable.
+        /// Compatible kcode-linux-x86_64.tar.gz package, not a laptop executable.
         #[arg(long)]
         artifact: Option<PathBuf>,
-        /// Build a portable Linux package from this jcode checkout first.
+        /// Build a portable Linux package from this kcode checkout first.
         #[arg(long)]
         from_source: bool,
         /// After upload, hand the cloud daemon off to it once no session is mid-turn.
@@ -61,9 +61,9 @@ mod tests {
 
     #[test]
     fn runtime_push_requires_an_explicit_artifact() {
-        assert!(Args::try_parse_from(["jcode", "cloud", "runtime", "push"]).is_err());
+        assert!(Args::try_parse_from(["kcode", "cloud", "runtime", "push"]).is_err());
         let parsed = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "runtime",
             "push",
@@ -79,7 +79,7 @@ mod tests {
         ));
         assert!(
             Args::try_parse_from([
-                "jcode",
+                "kcode",
                 "cloud",
                 "runtime",
                 "push",
@@ -90,7 +90,7 @@ mod tests {
             .is_err()
         );
         let parsed = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "runtime",
             "push",
@@ -109,13 +109,13 @@ mod tests {
                 }
             }))
         ));
-        assert!(Args::try_parse_from(["jcode", "cloud", "runtime", "reload", "--force"]).is_ok());
+        assert!(Args::try_parse_from(["kcode", "cloud", "runtime", "reload", "--force"]).is_ok());
     }
 
     #[test]
     fn runtime_policy_switches_require_confirmation() {
-        assert!(Args::try_parse_from(["jcode", "cloud", "runtime", "stable"]).is_err());
-        assert!(Args::try_parse_from(["jcode", "cloud", "runtime", "pin", "v0.99.1"]).is_err());
-        assert!(Args::try_parse_from(["jcode", "cloud", "runtime", "stable", "--yes"]).is_ok());
+        assert!(Args::try_parse_from(["kcode", "cloud", "runtime", "stable"]).is_err());
+        assert!(Args::try_parse_from(["kcode", "cloud", "runtime", "pin", "v0.99.1"]).is_err());
+        assert!(Args::try_parse_from(["kcode", "cloud", "runtime", "stable", "--yes"]).is_ok());
     }
 }

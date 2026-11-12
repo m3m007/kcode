@@ -8,12 +8,12 @@
     "New post_tool_feedback hook feeds a script's output back to the model after each tool call, and post_tool hooks now receive the tool input, call id, and touched paths"
   ],
   "improvements": [
-    "The jcode: model prefix and JCODE_OPENROUTER_MODEL are honored, and jcode run fails clearly when --model cannot be applied",
+    "The kcode: model prefix and KCODE_OPENROUTER_MODEL are honored, and kcode run fails clearly when --model cannot be applied",
     "Onboarding predicts your default provider and model from existing logins",
     "Expired status notices clear on their own without waiting for a keypress",
     "Old build binaries and stale scratch files are pruned automatically",
     "Web search hints no longer recommend the retired Bing Search API",
-    "jcode builds on FreeBSD"
+    "kcode builds on FreeBSD"
   ],
   "fixes": [
     "New sessions no longer show \"Waiting for reload handoff\" right after a reload",

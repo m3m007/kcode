@@ -6,12 +6,12 @@ The actual GitHub Actions run `40636491000`, head
 `4d5a1aa26a3f6f71bc762ed3835d806f259733cb`, finished on October 28, 2026
 with 20 passing stages and two failing stages. Both failures passed on their
 second repetition. Downloaded evidence is retained locally under
-`~/.jcode/scratch/run40636491000/cloud-acceptance-40636491000-1/`.
+`~/.kcode/scratch/run40636491000/cloud-acceptance-40636491000-1/`.
 
 - `group.suite.1/output.log` reports a missing source `group-root` lease after
   the simulated lost activation command. Its fixture `uncertain.err` is
   `Error: Server disconnected`, not evidence of the intended lost activation.
-  The source `home/.jcode/logs/jcode-2026-10-28.log` records concurrent main
+  The source `home/.kcode/logs/kcode-2026-10-28.log` records concurrent main
   connections and `Debug client error: daemon is busy; wait for all turns and
   background tasks to finish before group transfer` at `05:17:45.328` UTC.
 - `tui.midturn_auto_poke.1` times out waiting for a fresh cloud continuation.
@@ -44,17 +44,17 @@ available afterward. Existing busy-work rejection coverage remains enabled.
 ## Executed validation
 
 The repaired executable was built with hosted
-`justrust build --profile selfdev -p jcode --bin jcode`, run
+`justrust build --profile selfdev -p kcode --bin kcode`, run
 `20261027-222521501-3600137` (`where remote on hosted`). Its reported version is
-`jcode v0.99.1-dev (unknown)`, so the tested artifact is identified by SHA-256:
+`kcode v0.99.1-dev (unknown)`, so the tested artifact is identified by SHA-256:
 
 ```text
 81e54f64e4a0f596774ac41879ac45f89f3254c6e7c10a1b3251aa5aaf4c81c2
 ```
 
-- Hosted `justrust check -p jcode-app-core --tests`: passed.
+- Hosted `justrust check -p kcode-app-core --tests`: passed.
 - Hosted focused actual-socket regression: 1 passed, 0 failed, 0 ignored.
-- Hosted `justrust test -p jcode-app-core group_transfer -- --nocapture`:
+- Hosted `justrust test -p kcode-app-core group_transfer -- --nocapture`:
   11 passed, 0 failed, 0 ignored, including the socket regression and
   `prepare_rejects_busy_gate_then_fences_and_abort_restores`.
 - `python3 tests/test_cloud_acceptance_harness.py`: 13 passed.
@@ -65,11 +65,11 @@ The repaired executable was built with hosted
   repeated twice, including idle round trips and all seven TUI scenarios.
 
 ```bash
-python3 scripts/test_cloud_acceptance.py --binary target/selfdev/jcode \
+python3 scripts/test_cloud_acceptance.py --binary target/selfdev/kcode \
   --layers group tui --scenario midturn_auto_poke --repeat 4 \
-  --artifacts "$JCODE_SCRATCH_DIR/cloud-ping-repair-focused"
-python3 scripts/test_cloud_acceptance.py --binary target/selfdev/jcode \
-  --repeat 2 --artifacts "$JCODE_SCRATCH_DIR/cloud-ping-repair-full"
+  --artifacts "$KCODE_SCRATCH_DIR/cloud-ping-repair-focused"
+python3 scripts/test_cloud_acceptance.py --binary target/selfdev/kcode \
+  --repeat 2 --artifacts "$KCODE_SCRATCH_DIR/cloud-ping-repair-full"
 ```
 
 Both artifact directories retain `report.json`, `junit.xml`, fixture homes,

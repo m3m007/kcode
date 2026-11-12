@@ -3,9 +3,9 @@ use super::*;
 #[tokio::test]
 async fn memory_cli_project_import_uses_explicit_directory_and_persists() {
     let _guard = crate::storage::lock_test_env();
-    let _saved = SavedEnv::capture(&["JCODE_HOME"]);
+    let _saved = SavedEnv::capture(&["KCODE_HOME"]);
     let temp = tempfile::tempdir().expect("temp dir");
-    crate::env::set_var("JCODE_HOME", temp.path().join("home"));
+    crate::env::set_var("KCODE_HOME", temp.path().join("home"));
     let project = temp.path().join("project");
     std::fs::create_dir_all(&project).expect("create project");
 
@@ -67,16 +67,16 @@ async fn memory_cli_project_import_fails_without_durable_project_store() {
 async fn memory_cli_semantic_requires_jev_but_keyword_search_remains_local() {
     let _guard = crate::storage::lock_test_env();
     let keys = [
-        "JCODE_HOME",
-        "JCODE_API_KEY",
+        "KCODE_HOME",
+        "KCODE_API_KEY",
         "OPENROUTER_API_KEY",
         "TYPESAFE_API_KEY",
         "AIMLAPI_API_KEY",
-        "JCODE_MEMORY_JEV_PROVIDER",
+        "KCODE_MEMORY_JEV_PROVIDER",
     ];
     let _saved = SavedEnv::capture(&keys);
     let temp = tempfile::tempdir().expect("temp dir");
-    crate::env::set_var("JCODE_HOME", temp.path().join("home"));
+    crate::env::set_var("KCODE_HOME", temp.path().join("home"));
     for key in &keys[1..] {
         crate::env::remove_var(key);
     }

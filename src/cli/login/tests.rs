@@ -4,9 +4,9 @@ use super::*;
 fn novita_login_saves_private_key_and_rejects_empty_replacement() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().unwrap();
-    let prev_home = std::env::var_os("JCODE_HOME");
+    let prev_home = std::env::var_os("KCODE_HOME");
     let prev_key = std::env::var_os("NOVITA_API_KEY");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     let profile = crate::provider_catalog::NOVITA_PROFILE;
     login_openai_compatible_flow(
         &profile,
@@ -42,7 +42,7 @@ fn novita_login_saves_private_key_and_rejects_empty_replacement() {
     assert!(err.to_string().contains("No API key provided"));
     assert_eq!(std::fs::read_to_string(path).unwrap(), saved);
     set_or_clear_env("NOVITA_API_KEY", prev_key);
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 fn set_or_clear_env(key: &str, value: Option<std::ffi::OsString>) {
@@ -57,19 +57,19 @@ fn set_or_clear_env(key: &str, value: Option<std::ffi::OsString>) {
 fn scriptable_resume_command_matches_input_kind() {
     assert_eq!(
         scriptable_resume_command("openai", "callback_url", None),
-        "jcode login --provider openai --callback-url '<url-or-query>'"
+        "kcode login --provider openai --callback-url '<url-or-query>'"
     );
     assert_eq!(
         scriptable_resume_command("gemini", "auth_code", None),
-        "jcode login --provider gemini --auth-code '<code>'"
+        "kcode login --provider gemini --auth-code '<code>'"
     );
     assert_eq!(
         scriptable_resume_command("copilot", "complete", None),
-        "jcode login --provider copilot --complete"
+        "kcode login --provider copilot --complete"
     );
     assert_eq!(
         scriptable_resume_command("muse-subscription", "complete", None),
-        "jcode login --provider muse-subscription --complete"
+        "kcode login --provider muse-subscription --complete"
     );
 }
 
@@ -77,8 +77,8 @@ fn scriptable_resume_command_matches_input_kind() {
 fn load_pending_login_removes_expired_record() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    let prev_home = std::env::var_os("KCODE_HOME");
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     let path = pending_login_path("openai", None).expect("pending path");
     let record = PendingScriptableLoginRecord {
@@ -96,15 +96,15 @@ fn load_pending_login_removes_expired_record() {
     assert!(err.to_string().contains("expired"));
     assert!(!path.exists(), "expired pending login should be removed");
 
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[test]
 fn load_pending_login_accepts_legacy_format() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    let prev_home = std::env::var_os("KCODE_HOME");
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     let path = pending_login_path("gemini", None).expect("pending path");
     let legacy = PendingScriptableLogin::Gemini {
@@ -125,7 +125,7 @@ fn load_pending_login_accepts_legacy_format() {
         other => panic!("unexpected login variant: {:?}", other),
     }
 
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[test]
@@ -235,15 +235,15 @@ struct ScopedLoginTestHome(Option<std::ffi::OsString>);
 
 impl ScopedLoginTestHome {
     fn new(path: &Path) -> Self {
-        let previous = std::env::var_os("JCODE_HOME");
-        crate::env::set_var("JCODE_HOME", path);
+        let previous = std::env::var_os("KCODE_HOME");
+        crate::env::set_var("KCODE_HOME", path);
         Self(previous)
     }
 }
 
 impl Drop for ScopedLoginTestHome {
     fn drop(&mut self) {
-        set_or_clear_env("JCODE_HOME", self.0.take());
+        set_or_clear_env("KCODE_HOME", self.0.take());
     }
 }
 
@@ -421,9 +421,9 @@ fn scoped_concurrent_begin_and_cancel_never_resurrect_pending_state() {
 async fn complete_saved_muse_subscription_login_uses_code_only_path() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
+    let prev_home = std::env::var_os("KCODE_HOME");
     let prev_opt_in = std::env::var_os(auth::muse::EXPERIMENTAL_ENV_VAR);
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     crate::env::set_var(auth::muse::EXPERIMENTAL_ENV_VAR, "1");
 
     let path = pending_login_path("muse-subscription", Some("flow-muse")).expect("pending path");
@@ -483,16 +483,16 @@ async fn complete_saved_muse_subscription_login_uses_code_only_path() {
     assert_eq!(credentials.access_token, "muse_test_access_token");
 
     set_or_clear_env(auth::muse::EXPERIMENTAL_ENV_VAR, prev_opt_in);
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[tokio::test]
 async fn cancelling_muse_subscription_login_during_polling_prevents_credential_persistence() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
+    let prev_home = std::env::var_os("KCODE_HOME");
     let prev_opt_in = std::env::var_os(auth::muse::EXPERIMENTAL_ENV_VAR);
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     crate::env::set_var(auth::muse::EXPERIMENTAL_ENV_VAR, "1");
 
     let flow_id = "flow-muse-cancel-race";
@@ -550,16 +550,16 @@ async fn cancelling_muse_subscription_login_during_polling_prevents_credential_p
     );
 
     set_or_clear_env(auth::muse::EXPERIMENTAL_ENV_VAR, prev_opt_in);
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[tokio::test]
 async fn replacing_muse_subscription_login_during_polling_prevents_credential_persistence() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
+    let prev_home = std::env::var_os("KCODE_HOME");
     let prev_opt_in = std::env::var_os(auth::muse::EXPERIMENTAL_ENV_VAR);
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     crate::env::set_var(auth::muse::EXPERIMENTAL_ENV_VAR, "1");
 
     let flow_id = "flow-muse-replace-race";
@@ -621,16 +621,16 @@ async fn replacing_muse_subscription_login_during_polling_prevents_credential_pe
     );
 
     set_or_clear_env(auth::muse::EXPERIMENTAL_ENV_VAR, prev_opt_in);
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[tokio::test]
 async fn complete_scriptable_muse_subscription_login_fails_if_already_cancelled() {
     let _guard = crate::storage::lock_test_env();
     let temp = tempfile::TempDir::new().expect("temp dir");
-    let prev_home = std::env::var_os("JCODE_HOME");
+    let prev_home = std::env::var_os("KCODE_HOME");
     let prev_opt_in = std::env::var_os(auth::muse::EXPERIMENTAL_ENV_VAR);
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     crate::env::set_var(auth::muse::EXPERIMENTAL_ENV_VAR, "1");
 
     let flow_id = "flow-muse-pre-cancelled";
@@ -661,7 +661,7 @@ async fn complete_scriptable_muse_subscription_login_fails_if_already_cancelled(
     );
 
     set_or_clear_env(auth::muse::EXPERIMENTAL_ENV_VAR, prev_opt_in);
-    set_or_clear_env("JCODE_HOME", prev_home);
+    set_or_clear_env("KCODE_HOME", prev_home);
 }
 
 #[tokio::test]

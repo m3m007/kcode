@@ -7,17 +7,17 @@ Artifact Signing, and the release draft/publish path remain unchanged.
 
 ## Run it
 
-Run the reviewed workflow from canonical `1jehuang/jcode` **master**. There is no
+Run the reviewed workflow from canonical `1jehuang/kcode` **master**. There is no
 source-ref input: GitHub's dispatch SHA is the exact source checked out by every
 job. A branch/tag/fork dispatch cannot run the producer. After these files reach
 master, the following is the safe, **no-secret** native macOS validation run:
 
 ```bash
-gh workflow run native-handoff.yml --repo 1jehuang/jcode --ref master \
+gh workflow run native-handoff.yml --repo 1jehuang/kcode --ref master \
   -f lane=macos-arm64 -f sign_macos=false
-gh run list --repo 1jehuang/jcode --workflow native-handoff.yml --limit 5
-gh run watch RUN_ID --repo 1jehuang/jcode --exit-status
-gh run download RUN_ID --repo 1jehuang/jcode --dir native-handoff-results
+gh run list --repo 1jehuang/kcode --workflow native-handoff.yml --limit 5
+gh run watch RUN_ID --repo 1jehuang/kcode --exit-status
+gh run download RUN_ID --repo 1jehuang/kcode --dir native-handoff-results
 ```
 
 Hosted ARM validation requires repository secret `JUSTRUST_API_KEY` for an
@@ -26,7 +26,7 @@ source to the hosted compiler and consumes its normal credits. Do not dispatch
 it with another tenant's key or expect a no-secrets build:
 
 ```bash
-gh workflow run native-handoff.yml --repo 1jehuang/jcode --ref master \
+gh workflow run native-handoff.yml --repo 1jehuang/kcode --ref master \
   -f lane=linux-arm64 -f sign_macos=false
 ```
 
@@ -41,7 +41,7 @@ switch.
 
 ## Pins and evidence
 
-Both lanes use `nightly-2026-10-08`, `--locked --release --bin jcode`, default
+Both lanes use `nightly-2026-10-08`, `--locked --release --bin kcode`, default
 features, opt-level 3, and no incremental compilation. Linux adds the rebuilt
 standard-library flag above and `--features linux-compat-vendored-openssl` so
 OpenSSL is built for the cross target rather than discovered from the host.
@@ -59,7 +59,7 @@ pretend it supports that contract, the workflow bootstraps with the existing
 pinned CI installer and locally builds client revision
 `e020bad4c407b573b74cc0aa9ab7d5a90d98018a`. This extra bootstrap time is deliberate;
 replace it with a reviewed checksum-pinned published client when available.
-Only the Jcode ARM build goes to hosted infrastructure. Its successful JSON
+Only the Kcode ARM build goes to hosted infrastructure. Its successful JSON
 receipt and local justrust metadata must report a remote build on **hosted**,
 not local fallback or a private remote. The native macOS receipt must not report
 a remote build. Full human-readable and JSON reports are retained to inspect
@@ -104,7 +104,7 @@ Store these secrets **in that environment**, not in the build job:
 After authorization, a maintainer can request:
 
 ```bash
-gh workflow run native-handoff.yml --repo 1jehuang/jcode --ref master \
+gh workflow run native-handoff.yml --repo 1jehuang/kcode --ref master \
   -f lane=macos-arm64 -f sign_macos=true
 ```
 
@@ -113,7 +113,7 @@ successful native verification of the trusted same-run artifact, with another
 provenance check before credentials enter a step. Missing credentials fail,
 never fall back to ad-hoc/unsigned output. A temporary keychain is deleted on
 exit, signing uses hardened runtime and a timestamp, and verification requires
-Apple's Developer ID chain OIDs, the stable `com.jcode.cli` identifier, and the
+Apple's Developer ID chain OIDs, the stable `com.kcode.cli` identifier, and the
 selected Team ID, not merely a structurally valid signature. The signed binary
 then passes the same credential-free native smoke tests before any notarization
 submission. Notarization must return `Accepted`. The signed ZIP, notarization
@@ -170,7 +170,7 @@ a separate, unverified path.
 On October 27, 2026, Actions run `40423877886` passed at exact source/workflow
 commit `d605b6747fe0504e638818729a7785750158877d`. The **native macOS ARM64
 producer**, not a hosted cross-build, completed from 00:03:25 to 00:28:02 UTC
-(Jcode build step: 00:05:56 to 00:27:43 UTC). It uploaded artifact `12699812599`
+(Kcode build step: 00:05:56 to 00:27:43 UTC). It uploaded artifact `12699812599`
 (`native-handoff-macos-arm64-1`). The separate native consumer passed same-run
 provenance checks and `--version`, `--help`, and `run --help` smoke checks from
 00:28:06 to 00:28:29 UTC. This validates the native macOS artifact handoff and
@@ -209,7 +209,7 @@ On October 28, 2026, run `40628778548`, attempt 1, passed at exact source
 `a143bccbc9c28d7ce6abbbd47a715dba3a9bff96`. The native macOS ARM64 producer
 built through `justrust --local`, with pinned justrust revision
 `a7e7d02cbd50358d1aea056d3c17e5496586d62a` and `nightly-2026-10-08`.
-The Jcode build step ran from 03:51:33 to 04:13:29 UTC. The separate native
+The Kcode build step ran from 03:51:33 to 04:13:29 UTC. The separate native
 consumer passed at 04:14:01 UTC, and the protected signing job completed at
 04:15:58 UTC. This is a native GitHub macOS build, not Linux-hosted macOS
 cross-compilation or a performance comparison.

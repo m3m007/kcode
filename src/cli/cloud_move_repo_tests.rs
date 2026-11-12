@@ -20,7 +20,7 @@ pub(super) fn repository() -> (tempfile::TempDir, tempfile::TempDir, RepoManifes
         root.path(),
         &[
             "update-ref",
-            "refs/jcode-cloud/earlier-session/base",
+            "refs/kcode-cloud/earlier-session/base",
             &repo.snapshot,
         ],
     )
@@ -83,7 +83,7 @@ fn cloud_unreturned_work_is_rescued_and_move_proceeds() {
         &[
             "for-each-ref",
             "--format=%(refname)",
-            "refs/jcode-cloud/rescued",
+            "refs/kcode-cloud/rescued",
         ],
     )
     .unwrap();
@@ -136,7 +136,7 @@ fn cloud_restore_accepts_incremental_bundle_without_branch_advertisement() {
     )
     .unwrap();
     let bundle = stage.path().join("incremental.bundle");
-    let snapshot_ref = "refs/jcode-cloud/earlier-session/outgoing";
+    let snapshot_ref = "refs/kcode-cloud/earlier-session/outgoing";
     git(
         root.path(),
         &[
@@ -181,7 +181,7 @@ fn cloud_restore_rejects_missing_bundle_prerequisite_before_checkout_changes() {
             "bundle",
             "create",
             bundle.to_str().unwrap(),
-            "refs/jcode-cloud/earlier-session/outgoing",
+            "refs/kcode-cloud/earlier-session/outgoing",
             &format!("^{}", repo.head),
         ],
     )

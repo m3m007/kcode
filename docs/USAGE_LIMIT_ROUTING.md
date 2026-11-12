@@ -1,12 +1,12 @@
 # Usage exhaustion and temporary throttles
 
-Jcode treats a definitive exhausted usage window differently from a temporary
+Kcode treats a definitive exhausted usage window differently from a temporary
 rate limit. HTTP 429 alone, including Anthropic's “would exceed your account's
 rate limit”, does not prove the account has exhausted its plan allowance.
 
 ## Configuration
 
-In `~/.jcode/config.toml`:
+In `~/.kcode/config.toml`:
 
 ```toml
 [provider]
@@ -41,7 +41,7 @@ anthropic_retry_recoverable_rate_limits = true
   `exhausted_usage_immediate_failover` is enabled. Ambiguous failures retain the
   existing countdown. `cross_provider_failover = "manual"` always takes priority.
 - No setting enrolls new accounts, enables API billing, purchases credits, or
-  bypasses the auto-switch pool. If no approved route remains, Jcode reports the
+  bypasses the auto-switch pool. If no approved route remains, Kcode reports the
   failure instead of switching to an arbitrary provider.
 
 The immediate-exhaustion preference controls the TUI countdown. API clients

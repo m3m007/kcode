@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Run startup_acceptance.sh across a scenario matrix for one jcode build, each
+# Run startup_acceptance.sh across a scenario matrix for one kcode build, each
 # against its own server (same build) on an isolated runtime dir.
 # Usage: startup_acceptance_matrix.sh <binary> <label>
 set -u
 bin=${1:?binary}
 label=${2:?label}
-root=/home/jeremy/.jcode/scratch/acc-$label
+root=/home/jeremy/.kcode/scratch/acc-$label
 rt=$root/rt
 mkdir -p "$rt"; chmod 700 "$rt"
-sock=$rt/jcode.sock
-repo=/home/jeremy/jcode
-hint=$HOME/.jcode/remote_header_hint.json
+sock=$rt/kcode.sock
+repo=/home/jeremy/kcode
+hint=$HOME/.kcode/remote_header_hint.json
 nogit=$root/nogit; mkdir -p "$nogit"
 
 (XDG_RUNTIME_DIR=$rt setsid "$bin" --socket "$sock" serve > "$root/serve.log" 2>&1 &)
@@ -47,8 +47,8 @@ run mismatched-hint 140 "$repo"
 run after-mismatch 140 "$repo"
 # Resume a recent session that has a real transcript (>= 4 messages).
 resume_id=""
-for f in $(ls -t "$HOME/.jcode/sessions" | grep -E '^session_.*\.json$' | head -80); do
-  n=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1])).get('messages', [])))" "$HOME/.jcode/sessions/$f" 2>/dev/null)
+for f in $(ls -t "$HOME/.kcode/sessions" | grep -E '^session_.*\.json$' | head -80); do
+  n=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1])).get('messages', [])))" "$HOME/.kcode/sessions/$f" 2>/dev/null)
   if [ "${n:-0}" -ge 4 ]; then resume_id=${f%.json}; break; fi
 done
 if [ -n "$resume_id" ]; then
@@ -56,16 +56,16 @@ if [ -n "$resume_id" ]; then
   run resumed-session 140 "$repo"
   client="$bin --no-update --socket $sock"
 fi
-kill $(fuser "$rt/jcode-daemon.lock" 2>/dev/null) 2>/dev/null
+kill $(fuser "$rt/kcode-daemon.lock" 2>/dev/null) 2>/dev/null
 # Client-spawned server: a fresh runtime dir with no server running, so the
 # client starts it (first launch after login/reboot).
 srt=$root/spawn-rt; mkdir -p "$srt"; chmod 700 "$srt"
 echo "### $label / client-spawned-server"
-"$repo/scripts/startup_acceptance.sh" "$bin --no-update --socket $srt/jcode.sock" "$root/client-spawned-server" 140 "$repo" XDG_RUNTIME_DIR=$srt JCODE_SOCKET=$srt/jcode.sock || fails=$((fails+1))
-kill $(fuser "$srt/jcode-daemon.lock" 2>/dev/null) 2>/dev/null
+"$repo/scripts/startup_acceptance.sh" "$bin --no-update --socket $srt/kcode.sock" "$root/client-spawned-server" 140 "$repo" XDG_RUNTIME_DIR=$srt KCODE_SOCKET=$srt/kcode.sock || fails=$((fails+1))
+kill $(fuser "$srt/kcode-daemon.lock" 2>/dev/null) 2>/dev/null
 # R7 (server): the History payload never waited on the model catalog for more
 # than its 30ms budget, and MCP names did not build full tool definitions.
-log=$HOME/.jcode/logs/jcode-$(date +%F).log
+log=$HOME/.kcode/logs/kcode-$(date +%F).log
 since=$(stat -c %Y "$root/serve.log")
 max_models=$(awk -v s="$(date -d @"$since" '+%F %T')" 'substr($0,2,19) >= s' "$log" \
   | grep -o 'send_history prep: .*' | sed -E 's/.*models=([0-9]+)ms.*/\1/' | sort -n | tail -1)

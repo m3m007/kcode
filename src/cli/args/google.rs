@@ -1,4 +1,4 @@
-//! Google-specific `jcode login` flags, flattened into `Command::Login`.
+//! Google-specific `kcode login` flags, flattened into `Command::Login`.
 
 use clap::{Args, ValueEnum};
 

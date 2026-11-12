@@ -1,8 +1,8 @@
 # Slash commands over SSH and cloud VMs
 
 Audit date: 2026-10-30. Scope: the entire `REGISTERED_COMMANDS` registry in
-`crates/jcode-tui/src/tui/app/state_ui_input_helpers.rs`, including hidden aliases.
-This describes the TUI attached using `jcode --ssh`, including a cloud VM attached
+`crates/kcode-tui/src/tui/app/state_ui_input_helpers.rs`, including hidden aliases.
+This describes the TUI attached using `kcode --ssh`, including a cloud VM attached
 through that transport. It does not claim every command is implemented on the VM.
 
 ## Safety contract
@@ -114,7 +114,7 @@ A blocked command must not silently execute against the laptop.
 | `/fork`, `/split`, `/transfer` | Wire | Create a daemon-side child and navigate this terminal only after the matching response. No local child-window launch or VM path lookup. |
 | `/desktop`, `/workspace` | Blocked | Local child-window launch does not yet have a remote-safe Desktop/workspace transport contract. |
 | `/cloud`, `/local` | Coordinated handoff | Cloud orchestration is explicit. Moving an already remote session to cloud is rejected. `/local` coordinates return, not an arbitrary local command fallback. Requires configured cloud authority and successful handoff checks. |
-| `/mobile`, `/mobile cancel` | Cloud handoff and push | Moves the session and its swarm to the account's managed `jcode-cloud` host using the same safety checks as `/cloud`, then sends a session-targeted push. An already-cloud session only sends the push. Tap the notification to open that session in the mobile app. Sign in to the same Jcode account in the CLI and app and enable app notifications. Delivery failures do not undo a successful migration. Cancel stops a queued handoff, not an already-running transfer. |
+| `/mobile`, `/mobile cancel` | Cloud handoff and push | Moves the session and its swarm to the account's managed `kcode-cloud` host using the same safety checks as `/cloud`, then sends a session-targeted push. An already-cloud session only sends the push. Tap the notification to open that session in the mobile app. Sign in to the same Kcode account in the CLI and app and enable app notifications. Delivery failures do not undo a successful migration. Cancel stops a queued handoff, not an already-running transfer. |
 | `/quit` | UI | Detach/exit client without overwriting the server's session file. |
 | `/auth` | Runtime | Credential readiness on the VM, without returning secrets. Not a live provider request. |
 | `/logout` | Runtime | Requires `/logout <provider> confirm`. Unconfirmed requests only explain the cleanup scope. Does not revoke external credentials, and live provider instances may retain in-memory credentials until reconnect. |
@@ -141,7 +141,7 @@ A blocked command must not silently execute against the laptop.
 
 ## Workflow acceptance
 
-Run `JCODE_BIN=/path/to/rebuilt/jcode scripts/test_ssh_slash_workflows.sh` on Linux
+Run `KCODE_BIN=/path/to/rebuilt/kcode scripts/test_ssh_slash_workflows.sh` on Linux
 with OpenSSH server/client, tmux and Python 3.11 or newer. It uses a private,
 loopback-only SSH server, generated host/client keys, separate client and daemon
 homes, and a temporary workspace. The actual native `--ssh` transport, TUI,

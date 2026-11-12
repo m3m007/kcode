@@ -1,4 +1,4 @@
-//! `jcode login google`: guided bring-your-own OAuth app setup and login.
+//! `kcode login google`: guided bring-your-own OAuth app setup and login.
 //!
 //! The setup mirrors (and goes beyond) `gog auth setup`: it automates project
 //! creation and API enabling through `gcloud` when available, opens console
@@ -40,7 +40,7 @@ pub(super) async fn login_google_flow(
             if have_creds.is_some() {
                 eprintln!("Re-running setup. The existing OAuth client is replaced on import.\n");
             } else {
-                eprintln!("No Google OAuth client yet. jcode uses your own Google Cloud app,");
+                eprintln!("No Google OAuth client yet. kcode uses your own Google Cloud app,");
                 eprintln!("so your data goes straight from your machine to Google.\n");
             }
             run_client_setup(&services, no_browser)?;
@@ -176,7 +176,7 @@ fn run_client_setup(services: &[GoogleService], no_browser: bool) -> Result<()> 
     }
 
     eprintln!("How do you want to set up the OAuth client?\n");
-    eprintln!("  [1] Guided setup (recommended): jcode opens each page and imports the download");
+    eprintln!("  [1] Guided setup (recommended): kcode opens each page and imports the download");
     eprintln!("  [2] I already have a client ID and secret to paste");
     eprintln!("  [3] I have a downloaded client JSON at a specific path\n");
     match prompt("Choose [1/2/3] (default: 1): ")?.as_str() {
@@ -194,9 +194,9 @@ fn guided_setup(services: &[GoogleService], no_browser: bool) -> Result<()> {
     let consent = setup::consent_screen_url(project);
     open_page(&consent, no_browser);
     eprintln!("  If it says \"Google Auth Platform not configured yet\", click Get Started:");
-    eprintln!("  - App name: jcode. Support and contact email: yours.");
+    eprintln!("  - App name: kcode. Support and contact email: yours.");
     eprintln!("  - Audience: External (or Internal for a Workspace account that allows it).");
-    eprintln!("  - Agree to the policy, then Create. Skip adding scopes; jcode requests them.");
+    eprintln!("  - Agree to the policy, then Create. Skip adding scopes; kcode requests them.");
     pause("\n  When the consent screen is created:")?;
 
     eprintln!("\n── Publish the app ──\n");
@@ -209,10 +209,10 @@ fn guided_setup(services: &[GoogleService], no_browser: bool) -> Result<()> {
     eprintln!("\n── Create the OAuth client ──\n");
     let since = SystemTime::now();
     open_page(&setup::create_client_url(project), no_browser);
-    eprintln!("  - Application type: Desktop app. Name: jcode. Click Create.");
+    eprintln!("  - Application type: Desktop app. Name: kcode. Click Create.");
     eprintln!("  - In the dialog, click \"Download JSON\".");
     eprintln!("\n  Waiting for client_secret_*.json in your Downloads folder...");
-    eprintln!("  (Press Ctrl+C to stop and use `jcode login google --setup` again later.)");
+    eprintln!("  (Press Ctrl+C to stop and use `kcode login google --setup` again later.)");
 
     let dirs = setup::default_download_dirs();
     let mut ticks = 0u32;
@@ -245,7 +245,7 @@ fn prepare_project(services: &[GoogleService], no_browser: bool) -> Result<Optio
             gcloud.account.as_deref().unwrap_or("?")
         );
         let default_choice = if gcloud.project.is_some() { "2" } else { "1" };
-        eprintln!("  [1] Create a new project for jcode (recommended)");
+        eprintln!("  [1] Create a new project for kcode (recommended)");
         if let Some(p) = &gcloud.project {
             eprintln!("  [2] Use the current gcloud project: {p}");
         }
@@ -292,13 +292,13 @@ fn prepare_project(services: &[GoogleService], no_browser: bool) -> Result<Optio
             }
         }
     } else if gcloud.installed {
-        eprintln!("\nTip: run `gcloud auth login` first and jcode will create the project and");
+        eprintln!("\nTip: run `gcloud auth login` first and kcode will create the project and");
         eprintln!("enable the APIs for you.");
     }
 
     eprintln!("\n── Create a Google Cloud project ──\n");
     open_page(setup::project_create_url(), no_browser);
-    eprintln!("  Name it \"jcode\" and click Create. Skip this if you want to reuse a project.");
+    eprintln!("  Name it \"kcode\" and click Create. Skip this if you want to reuse a project.");
     let project = prompt("\n  Project ID (shown under the name; Enter to skip): ")?;
     let project = (!project.is_empty()).then_some(project);
 
@@ -330,14 +330,14 @@ fn open_page(url: &str, no_browser: bool) {
 
 fn import_client(parsed: &setup::ClientJson, services: &[GoogleService]) -> Result<()> {
     if !parsed.desktop {
-        eprintln!("  Warning: this is a \"Web application\" client. jcode needs a \"Desktop app\"");
+        eprintln!("  Warning: this is a \"Web application\" client. kcode needs a \"Desktop app\"");
         eprintln!("  client for its local sign-in redirect. Create one with type Desktop app.");
         if !prompt("  Import anyway? [y/N]: ")?
             .to_ascii_lowercase()
             .starts_with('y')
         {
             anyhow::bail!(
-                "Create a Desktop app OAuth client and run `jcode login google --setup`."
+                "Create a Desktop app OAuth client and run `kcode login google --setup`."
             );
         }
     }
@@ -397,7 +397,7 @@ pub(super) fn default_pending_google_services() -> Vec<GoogleService> {
 
 /// `--google-client-json <path|auto>`: import an OAuth client JSON without
 /// prompts, so an agent driving the console in a browser can hand the
-/// download to jcode. Desktop clients only.
+/// download to kcode. Desktop clients only.
 pub(super) fn import_google_client_json(source: &str, quiet: bool) -> Result<()> {
     let (path, parsed) = if source.eq_ignore_ascii_case("auto") {
         setup::find_client_json(&setup::default_download_dirs(), None).ok_or_else(|| {
@@ -420,7 +420,7 @@ pub(super) fn import_google_client_json(source: &str, quiet: bool) -> Result<()>
     };
     if !parsed.desktop {
         anyhow::bail!(
-            "{} is a Web application client. jcode needs a Desktop app OAuth client: {}",
+            "{} is a Web application client. kcode needs a Desktop app OAuth client: {}",
             path.display(),
             setup::create_client_url(parsed.project_id.as_deref())
         );

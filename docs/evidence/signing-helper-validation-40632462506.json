@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "repository": "1jehuang/jcode",
+  "repository": "1jehuang/kcode",
   "source_sha": "001a400fa2969711d48932dc3c40707a749bc54b",
   "ref": "refs/heads/master",
   "run_id": "40632462506",
@@ -12,7 +12,7 @@
   "signed_sha256": "095213c0d300ca7dfb5a0acee2d0e81623a2974d941c27d49f6a1e2645a96950",
   "team_id": "TAS6ARKDN7",
   "target": "aarch64-apple-darwin",
-  "identifier": "com.jcode.cli",
+  "identifier": "com.kcode.cli",
   "checks": [
     "wrong-hash-no-output",
     "plan-no-output",

@@ -11,7 +11,7 @@
     "The Changes widget lists dirty files newest first with line counts and marks the files the agent edited",
     "MCP tools load through provider-native deferred loading, so adding or using MCP servers no longer busts the prompt cache",
     "Accounts have a persistent auto-switch pool, and failover rotates through it in your chosen order",
-    "Show an upgrade card and daily feature allowances when a Jcode plan limit is reached",
+    "Show an upgrade card and daily feature allowances when a Kcode plan limit is reached",
     "The daemon detects KV cache misses and reports them to every client",
     "Untitled sessions are named after their first prompt, and save labels name the session",
     "Keep your reading position across terminal resizes",

@@ -104,7 +104,7 @@ impl Target {
         if let Some(host) = self.host.clone().filter(|h| !h.trim().is_empty()) {
             return Ok(host);
         }
-        if let Ok(host) = std::env::var("JCODE_CLOUD_HOST")
+        if let Ok(host) = std::env::var("KCODE_CLOUD_HOST")
             && !host.trim().is_empty()
         {
             return Ok(host);
@@ -113,35 +113,35 @@ impl Target {
             return Ok(super::super::cloud_managed::HOST.to_string());
         }
         bail!(
-            "no cloud machine: sign in with `jcode login` to use the Jcode Cloud machine included with your subscription, or pass --host <ssh-alias> / set JCODE_CLOUD_HOST"
+            "no cloud machine: sign in with `kcode login` to use the Jcode Cloud machine included with your subscription, or pass --host <ssh-alias> / set KCODE_CLOUD_HOST"
         )
     }
 
     pub(super) fn remote_binary(&self) -> String {
         self.remote_binary
             .clone()
-            .or_else(|| match std::env::var("JCODE_CLOUD_REMOTE_BINARY") {
+            .or_else(|| match std::env::var("KCODE_CLOUD_REMOTE_BINARY") {
                 Ok(binary) => Some(binary),
                 Err(std::env::VarError::NotPresent) => None,
                 Err(std::env::VarError::NotUnicode(_)) => {
                     crate::logging::info(
-                        "cloud move: ignoring non-Unicode JCODE_CLOUD_REMOTE_BINARY",
+                        "cloud move: ignoring non-Unicode KCODE_CLOUD_REMOTE_BINARY",
                     );
                     None
                 }
             })
             .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| "jcode".to_string())
+            .unwrap_or_else(|| "kcode".to_string())
     }
 
-    /// Fail fast, with an actionable message, when the cloud host's jcode is
+    /// Fail fast, with an actionable message, when the cloud host's kcode is
     /// too old to speak the move protocol.
     pub(super) fn preflight(&self, host: &str) -> Result<()> {
         // Lock across the cache check and preparation, including other CLI
         // processes. Waiters reuse only a fully successful preflight.
         let _guard = if self.transport.is_none() {
             Some(timed_move_stage("preflight singleflight wait", || {
-                let home = crate::storage::jcode_dir()?;
+                let home = crate::storage::kcode_dir()?;
                 std::fs::create_dir_all(&home).context("create cloud preflight directory")?;
                 let path = home.join("cloud-preflight.lock");
                 let file = std::fs::OpenOptions::new()
@@ -157,7 +157,7 @@ impl Target {
         };
         let key = self.preflight_key(host)?;
         if self.transport.is_none()
-            && std::env::var("JCODE_CLOUD_FORCE_UPGRADE").as_deref() != Ok("1")
+            && std::env::var("KCODE_CLOUD_FORCE_UPGRADE").as_deref() != Ok("1")
             && preflight_is_fresh(&key)
         {
             crate::logging::info("cloud move: host preflight skipped, prepared moments ago");
@@ -192,13 +192,13 @@ impl Target {
             "{host}\n{}\n{}\n{namespace}\n{:?}\n{:?}\n{}\n{:?}\n{}\n{}\n{}",
             self.remote_binary(),
             REQUIRED_REMOTE_COMMANDS.join(","),
-            std::env::var_os("JCODE_CLOUD_RELEASE"),
-            std::env::var_os("JCODE_CLOUD_FORCE_UPGRADE"),
+            std::env::var_os("KCODE_CLOUD_RELEASE"),
+            std::env::var_os("KCODE_CLOUD_FORCE_UPGRADE"),
             exe.display(),
             metadata,
-            jcode_build_meta::VERSION,
-            jcode_build_meta::GIT_HASH,
-            jcode_build_meta::semver(),
+            kcode_build_meta::VERSION,
+            kcode_build_meta::GIT_HASH,
+            kcode_build_meta::semver(),
         ))
     }
 
@@ -221,10 +221,10 @@ impl Target {
                         // release yet. Use the running native executable, never
                         // a stale PATH launcher, and verify it before switching.
                         if cfg!(all(target_os = "linux", target_arch = "x86_64"))
-                            && !jcode_build_meta::is_release_build()
-                            && std::env::var_os("JCODE_CLOUD_RELEASE").is_none()
+                            && !kcode_build_meta::is_release_build()
+                            && std::env::var_os("KCODE_CLOUD_RELEASE").is_none()
                             && self.remote_binary.is_none()
-                            && std::env::var_os("JCODE_CLOUD_REMOTE_BINARY").is_none()
+                            && std::env::var_os("KCODE_CLOUD_REMOTE_BINARY").is_none()
                         {
                             step(
                                 "prepare",
@@ -241,7 +241,7 @@ impl Target {
                 // The managed preparation already verified this exact wrapper
                 // and every mandatory protocol. Custom binary selections still
                 // need their own capability probes below.
-                if self.remote_binary() == "jcode" {
+                if self.remote_binary() == "kcode" {
                     return Ok(());
                 }
             }
@@ -253,7 +253,7 @@ impl Target {
                 // Distinguish a missing or broken binary (exit 127/126, or a
                 // dangling wrapper target) from an old one lacking a command.
                 script.push_str(&format!(
-                    "version=$({binary} --no-update --no-selfdev --version 2>&1) || {{ printf 'cloud jcode is not runnable: %s\\n' \"$version\" >&2; exit 3; }}\n"
+                    "version=$({binary} --no-update --no-selfdev --version 2>&1) || {{ printf 'cloud kcode is not runnable: %s\\n' \"$version\" >&2; exit 3; }}\n"
                 ));
                 for command in REQUIRED_REMOTE_COMMANDS {
                     script.push_str(&format!(
@@ -278,16 +278,16 @@ impl Target {
                 return match output.status.code() {
                     Some(0) => Ok(()),
                     Some(3) => bail!(
-                        "jcode on `{host}` could not start. Reinstall it there (or pass --remote-binary / set JCODE_CLOUD_REMOTE_BINARY): {stderr}"
+                        "kcode on `{host}` could not start. Reinstall it there (or pass --remote-binary / set KCODE_CLOUD_REMOTE_BINARY): {stderr}"
                     ),
                     Some(4) => bail!(
-                        "jcode on `{host}` is too old for cloud handoff. Update jcode on the cloud host (or pass --remote-binary / set JCODE_CLOUD_REMOTE_BINARY to a newer build): {stderr}"
+                        "kcode on `{host}` is too old for cloud handoff. Update kcode on the cloud host (or pass --remote-binary / set KCODE_CLOUD_REMOTE_BINARY to a newer build): {stderr}"
                     ),
                     Some(SSH_CONNECTION_FAILURE) => bail!(
                         "could not connect to cloud host `{host}` after {SSH_ATTEMPTS} attempts: {stderr}"
                     ),
                     _ => bail!(
-                        "could not run jcode on `{host}` ({}): {stderr}",
+                        "could not run kcode on `{host}` ({}): {stderr}",
                         output.status
                     ),
                 };
@@ -297,10 +297,10 @@ impl Target {
                     let text = format!("{error:#}");
                     if text.contains("unrecognized") {
                         bail!(
-                            "jcode on `{host}` does not support the complete cloud handoff protocol (`{command}`). Update jcode on the cloud host (or pass --remote-binary / set JCODE_CLOUD_REMOTE_BINARY to a newer build)"
+                            "kcode on `{host}` does not support the complete cloud handoff protocol (`{command}`). Update kcode on the cloud host (or pass --remote-binary / set KCODE_CLOUD_REMOTE_BINARY to a newer build)"
                         );
                     }
-                    return Err(error.context(format!("could not run jcode on `{host}`")));
+                    return Err(error.context(format!("could not run kcode on `{host}`")));
                 }
             }
             Ok(())
@@ -316,7 +316,7 @@ impl Target {
         let bundle = tempfile::tempdir()?;
         let payload = bundle.path().join("payload");
         std::fs::create_dir(&payload)?;
-        std::fs::copy(&executable, payload.join("jcode.bin"))?;
+        std::fs::copy(&executable, payload.join("kcode.bin"))?;
         // Bundle the current executable's dependency closure, including its
         // loader. Never install these libraries into the cloud system paths.
         let dependencies = Command::new("ldd")
@@ -331,7 +331,7 @@ impl Target {
                 String::from_utf8_lossy(&dependencies.stderr)
             );
         }
-        let mut members = vec!["jcode".to_string(), "jcode.bin".to_string()];
+        let mut members = vec!["kcode".to_string(), "kcode.bin".to_string()];
         let mut loader = None;
         for line in String::from_utf8_lossy(&dependencies.stdout).lines() {
             if line.contains("not found") {
@@ -361,7 +361,7 @@ impl Target {
         }
         let loader = loader.context("development executable has no supported Linux loader")?;
         std::fs::write(
-            payload.join("jcode"),
+            payload.join("kcode"),
             format!(
                 "#!/bin/sh\nset -eu\np=$(readlink -f \"$0\")\nd=$(dirname \"$p\")\nexec \"$d/{loader}\" --library-path \"$d\" \"$p.bin\" \"$@\"\n"
             ),
@@ -383,9 +383,9 @@ impl Target {
         // The candidate is inside a private temporary directory. The outer
         // shell owns its cleanup independently of the installer's own traps.
         let prepare =
-            super::super::cloud_managed::prepare_script_with_candidate(home, Some("jcode"))?;
+            super::super::cloud_managed::prepare_script_with_candidate(home, Some("kcode"))?;
         let script = format!(
-            "set -eu\numask 077\nupload=$(mktemp -d)\ntrap 'rm -rf \"$upload\"' EXIT\ncat > \"$upload/bundle.tar.gz\"\nprintf '%s  %s\\n' '{checksum}' \"$upload/bundle.tar.gz\" | sha256sum --check --status\ntar xzf \"$upload/bundle.tar.gz\" --no-same-owner --no-same-permissions -C \"$upload\"\nchmod 755 \"$upload/jcode\" \"$upload/jcode.bin\" \"$upload\"/ld-linux*.so*\n(\ncd \"$upload\"\n{prepare}\n)\n"
+            "set -eu\numask 077\nupload=$(mktemp -d)\ntrap 'rm -rf \"$upload\"' EXIT\ncat > \"$upload/bundle.tar.gz\"\nprintf '%s  %s\\n' '{checksum}' \"$upload/bundle.tar.gz\" | sha256sum --check --status\ntar xzf \"$upload/bundle.tar.gz\" --no-same-owner --no-same-permissions -C \"$upload\"\nchmod 755 \"$upload/kcode\" \"$upload/kcode.bin\" \"$upload\"/ld-linux*.so*\n(\ncd \"$upload\"\n{prepare}\n)\n"
         );
         let mut command = Self::ssh_command(host)?;
         command.arg(format!("bash -c {}", shell_quote(&script)));
@@ -489,7 +489,7 @@ impl Target {
         Ok(command)
     }
 
-    /// Run `jcode <args>` on the target, feeding `stdin` and returning stdout.
+    /// Run `kcode <args>` on the target, feeding `stdin` and returning stdout.
     pub(super) fn run_remote(
         &self,
         host: &str,
@@ -516,7 +516,7 @@ impl Target {
                 .into());
             }
             bail!(
-                "remote `jcode {}` on `{host}` failed ({}):\n{stderr}",
+                "remote `kcode {}` on `{host}` failed ({}):\n{stderr}",
                 args.iter().take(2).copied().collect::<Vec<_>>().join(" "),
                 output.status,
             );

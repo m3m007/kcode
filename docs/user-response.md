@@ -1,6 +1,6 @@
 # Desktop user responses
 
-`user_response` sends a user-visible Markdown answer inline in Jcode Desktop.
+`user_response` sends a user-visible Markdown answer inline in Kcode Desktop.
 The tool description instructs the model to use it for answers, explanations,
 and completion summaries, and not repeat that content in a normal assistant
 message. It does not open a panel, create an applet, or write a file.
@@ -55,14 +55,14 @@ matching the existing deferred subscribe metadata pattern.
 
 ## Runtime delivery
 
-The registration and execution live in the Jcode daemon, not the Desktop
+The registration and execution live in the Kcode daemon, not the Desktop
 renderer or the harness API bridge. Rebuilding or reloading Desktop alone does
-not activate this tool. The daemon must run a Jcode binary containing this
+not activate this tool. The daemon must run a Kcode binary containing this
 change, and Desktop must subscribe/reconnect to that daemon. The bridge fronts
-the daemon selected by `JCODE_SOCKET`/the CLI daemon socket setting.
+the daemon selected by `KCODE_SOCKET`/the CLI daemon socket setting.
 
-For safe verification, build with `justrust build --profile selfdev --bin jcode`
+For safe verification, build with `justrust build --profile selfdev --bin kcode`
 and run the resulting binary against its own socket rather than restarting
 an in-use shared daemon. A production activation must use the established
-safe Jcode runtime build/reload workflow. Restarting only the bridge cannot
+safe Kcode runtime build/reload workflow. Restarting only the bridge cannot
 update the daemon's tool registry.

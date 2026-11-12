@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Startup-frame acceptance checks for the jcode TUI.
+# Startup-frame acceptance checks for the kcode TUI.
 #
 # Launches the real client in tmux against a real server and asserts, for
 # every distinct frame captured during startup:
-#   R1  overscroll line is identical on the first jcode frame and the final frame
+#   R1  overscroll line is identical on the first kcode frame and the final frame
 #   R2  overscroll line never shows placeholder facts (200k, raw `Oauth:`) on the
 #       first frame when a matching hint exists
 #   R3  the Overview widget, once shown, is still shown on the final frame

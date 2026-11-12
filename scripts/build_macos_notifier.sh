@@ -3,13 +3,13 @@
 #
 # The bundle is required because notifications posted by bare `osascript` are
 # owned by Script Editor: clicking such a banner activates Script Editor rather
-# than the terminal running the jcode session. Only an app that owns its own
+# than the terminal running the kcode session. Only an app that owns its own
 # notifications can handle the click and focus the right window.
 set -euo pipefail
 
 APP_NAME="Jcode Notifier.app"
-APP_DIR="${JCODE_NOTIFIER_APP_DIR:-$HOME/Applications/$APP_NAME}"
-BUNDLE_ID="com.jcode.notifier.helper"
+APP_DIR="${KCODE_NOTIFIER_APP_DIR:-$HOME/Applications/$APP_NAME}"
+BUNDLE_ID="com.kcode.notifier.helper"
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/assets/macos-notifier"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -28,7 +28,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   <key>CFBundleName</key><string>Jcode</string>
   <key>CFBundleDisplayName</key><string>Jcode</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-  <key>CFBundleExecutable</key><string>jcode-notifier</string>
+  <key>CFBundleExecutable</key><string>kcode-notifier</string>
   <key>CFBundleIconFile</key><string>Jcode.icns</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleVersion</key><string>1</string>
@@ -43,7 +43,7 @@ ICON="$SRC_DIR/../app-icons/Jcode.icns"
 [[ -f "$ICON" ]] && cp "$ICON" "$APP_DIR/Contents/Resources/Jcode.icns"
 
 swiftc -O -target "$(uname -m)-apple-macos11" \
-  -o "$APP_DIR/Contents/MacOS/jcode-notifier" "$SRC_DIR/main.swift"
+  -o "$APP_DIR/Contents/MacOS/kcode-notifier" "$SRC_DIR/main.swift"
 
 # Ad-hoc signing keeps the bundle identity stable so the user's notification
 # permission grant survives rebuilds.

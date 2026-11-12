@@ -6,10 +6,10 @@ blocker no longer reproduced.
 
 ## Deployment
 
-- Target: Worker `jcode-telemetry`, production custom domains
-  `telemetry.jcode.sh` and `telemetry.solosystems.dev`.
+- Target: Worker `kcode-telemetry`, production custom domains
+  `telemetry.kcode.sh` and `telemetry.solosystems.dev`.
 - Applied additive migration `0031_usage_report_receipts.sql` to the existing
-  `jcode-telemetry` database. No historical rows were deleted or rewritten.
+  `kcode-telemetry` database. No historical rows were deleted or rewritten.
 - Dry-run verified bindings, including `FIREHOSE_USAGE`.
 - Deployment succeeded at 10:55 UTC, version
   `3b15ed62-6418-42a4-a119-e748ab4ee267`.

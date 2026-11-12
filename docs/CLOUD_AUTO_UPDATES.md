@@ -23,7 +23,7 @@ persistent development policy. The system timer is enabled and active. At
 `v0.99.760-dev (3c448c323, dirty)` at:
 
 ```text
-/opt/jcode-cloud/releases/05a4befc5a95ad758100a42109f5dba3e742536d19ed7f63d220e186ecc7e3c8/jcode
+/opt/kcode-cloud/releases/05a4befc5a95ad758100a42109f5dba3e742536d19ed7f63d220e186ecc7e3c8/kcode
 ```
 
 The archive digest is the directory name. Remote version and modern group
@@ -69,11 +69,11 @@ so they can wake your account's cloud machine. A runtime selection applies to
 the whole host, not just one session.
 
 ```sh
-jcode cloud runtime status
-jcode cloud runtime check
-jcode cloud runtime push --artifact /path/to/jcode-linux-x86_64.tar.gz
-jcode cloud runtime pin v0.99.1 --yes
-jcode cloud runtime stable --yes
+kcode cloud runtime status
+kcode cloud runtime check
+kcode cloud runtime push --artifact /path/to/kcode-linux-x86_64.tar.gz
+kcode cloud runtime pin v0.99.1 --yes
+kcode cloud runtime stable --yes
 ```
 
 Push selects persistent `dev` policy. Pin and stable explicitly change policy,
@@ -87,18 +87,18 @@ identity metadata because hosted source snapshots do not contain `.git`:
 
 ```sh
 # Derive the same dev version as the build script for the current 0.99.1 base.
-export JCODE_BUILD_SEMVER="0.99.$((1 + $(git rev-list --count v0.99.1..HEAD)))"
-export JCODE_BUILD_GIT_HASH="$(git rev-parse --short HEAD)"
-export JCODE_BUILD_GIT_DATE="$(git log -1 --format=%ci)"
-export JCODE_BUILD_GIT_TAG="$(git describe --tags --always)"
+export KCODE_BUILD_SEMVER="0.99.$((1 + $(git rev-list --count v0.99.1..HEAD)))"
+export KCODE_BUILD_GIT_HASH="$(git rev-parse --short HEAD)"
+export KCODE_BUILD_GIT_DATE="$(git log -1 --format=%ci)"
+export KCODE_BUILD_GIT_TAG="$(git describe --tags --always)"
 # Set this when the checkout has uncommitted changes.
-export JCODE_BUILD_GIT_DIRTY=1
-justrust zigbuild --remote --profile selfdev -p jcode --bin jcode \
+export KCODE_BUILD_GIT_DIRTY=1
+justrust zigbuild --remote --profile selfdev -p kcode --bin kcode \
   --target x86_64-unknown-linux-gnu.2.17 \
   --features linux-compat-vendored-openssl
 scripts/package_cloud_runtime.sh \
-  target/x86_64-unknown-linux-gnu/selfdev/jcode \
-  /path/to/jcode-linux-x86_64.tar.gz
+  target/x86_64-unknown-linux-gnu/selfdev/kcode \
+  /path/to/kcode-linux-x86_64.tar.gz
 ```
 
 Packaging validates the Linux x86_64 ELF, glibc requirements, and unbundled shared
@@ -110,7 +110,7 @@ build workflow.
 
 ## Decision
 
-Automatically update managed Jcode Cloud hosts by default, using a centrally
+Automatically update managed Kcode Cloud hosts by default, using a centrally
 approved stable release and safe daemon activation. Do not enable the ordinary
 CLI updater on these hosts and do not restart the fleet immediately on every
 GitHub release. Updates must not depend on a user opening a local client.
@@ -120,11 +120,11 @@ GitHub release. Updates must not depend on a user opening a local client.
 The managed service is in the separate `solosystems-managed-cloud` repository:
 `workers/api/src/cloud_hosts.js`.
 
-- `CLOUD_JCODE_VERSION` and `CLOUD_JCODE_SHA256` currently pin bootstrap to
+- `CLOUD_KCODE_VERSION` and `CLOUD_KCODE_SHA256` currently pin bootstrap to
   `v0.88.0`. Provisioning downloads that exact archive, checks its checksum,
-  and installs `/opt/jcode-cloud/jcode`.
-- The user CLI wrapper and systemd daemon both set `JCODE_NO_UPDATE=1`.
-  The daemon runs through `jcode-cloud-serve` with `Restart=always`.
+  and installs `/opt/kcode-cloud/kcode`.
+- The user CLI wrapper and systemd daemon both set `KCODE_NO_UPDATE=1`.
+  The daemon runs through `kcode-cloud-serve` with `Restart=always`.
 - Waking a stopped VM calls EC2 `StartInstances`. The readiness unit waits for
   the daemon socket. This path does not select a new runtime release.
 - The current VM idle shutdown checks SSH connections, not agent activity.
@@ -133,7 +133,7 @@ The managed service is in the separate `solosystems-managed-cloud` repository:
 The local client's `src/cli/cloud_managed.rs` provides another upgrade path:
 
 - A release client selects its own exact release, or the local
-  `JCODE_CLOUD_RELEASE` override. It retains a newer capable installation.
+  `KCODE_CLOUD_RELEASE` override. It retains a newer capable installation.
 - Development clients normally accept an already-capable runtime. When an
   upgrade is required without a selected tag, the script resolves GitHub's
   latest release. This is not a fleet update policy.
@@ -143,7 +143,7 @@ The local client's `src/cli/cloud_managed.rs` provides another upgrade path:
 - It deliberately does not restart an existing daemon. Installed CLI version
   and running daemon version can therefore differ.
 
-The daemon has reload machinery (`crates/jcode-app-core/src/server/`), but
+The daemon has reload machinery (`crates/kcode-app-core/src/server/`), but
 `client_session.rs::handle_reload` is not an idle-only activation gate. It can
 queue a reload when the agent lock is busy. Do not treat ordinary reload or
 absence of SSH clients as proof that automatic activation is safe.
@@ -174,7 +174,7 @@ These are findings from local source checkouts, not an audit of running VMs.
    that kills active work. Until this gate is implemented and tested, stage only
    and activate at the next normal daemon start.
 5. **Target the managed artifact explicitly.** Ensure activation executes the
-   approved `/opt/jcode-cloud` candidate, not an unrelated local stable or
+   approved `/opt/kcode-cloud` candidate, not an unrelated local stable or
    self-development binary selected by general reload discovery. Keep both the
    CLI launcher and daemon launcher environment intact.
 6. **Health and rollback.** Check the actual running daemon's version and API
@@ -193,7 +193,7 @@ These are findings from local source checkouts, not an audit of running VMs.
 8. **User visibility and control.** Expose running, installed, target, pending,
    last-check, and failure state through cloud status. Default to automatic
    stable updates. Add a persistent exact-version pin and operator pause.
-   A pin is distinct from today's `JCODE_CLOUD_RELEASE`, which only chooses a
+   A pin is distinct from today's `KCODE_CLOUD_RELEASE`, which only chooses a
    client preflight download target and does not force a downgrade.
 
 ## Local self-development and client-initiated updates
@@ -208,7 +208,7 @@ Use three persistent per-host policies:
   metadata. Suspend stable activation until the owner explicitly returns to
   stable, including across VM sleep and wake.
 
-Add an explicit client-initiated workflow, conceptually `jcode cloud runtime
+Add an explicit client-initiated workflow, conceptually `kcode cloud runtime
 push`, plus `status` and `use stable`. These are proposed commands, not existing
 interfaces. Offer a push if the local dev client requires capabilities missing
 from the cloud daemon. Do not automatically upload a binary on every connection
@@ -239,7 +239,7 @@ against the same live session and credential stores as a shortcut.
 ## Implementation order
 
 1. Add the approved release manifest and verified host updater to managed-cloud
-   provisioning. Preserve `JCODE_NO_UPDATE=1`. Use a bundled last-good runtime if
+   provisioning. Preserve `KCODE_NO_UPDATE=1`. Use a bundled last-good runtime if
    the manifest is temporarily unavailable. Update and verify the bootstrap
    release separately rather than guessing a new digest.
 2. Add running-version health reporting, persistent update state, supervisor
@@ -271,6 +271,6 @@ against the same live session and credential stores as a shortcut.
 
 ## Scope
 
-This policy applies to managed Jcode Cloud hosts, not arbitrary user SSH hosts,
+This policy applies to managed Kcode Cloud hosts, not arbitrary user SSH hosts,
 local development sessions, hosted compiler sandboxes, or desktop installations.
 No cloud configuration or running host was changed by this design document.

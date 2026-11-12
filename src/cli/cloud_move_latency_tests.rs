@@ -1,10 +1,10 @@
 //! Each environment-dependent case runs in its own test process. Never mutate
-//! PATH, HOME, or JCODE_HOME in the shared test runner.
+//! PATH, HOME, or KCODE_HOME in the shared test runner.
 use super::*;
 use std::os::unix::fs::PermissionsExt;
 
-const CHILD_MODE: &str = "JCODE_CLOUD_LATENCY_TEST_MODE";
-const CHILD_ROOT: &str = "JCODE_CLOUD_LATENCY_TEST_ROOT";
+const CHILD_MODE: &str = "KCODE_CLOUD_LATENCY_TEST_MODE";
+const CHILD_ROOT: &str = "KCODE_CLOUD_LATENCY_TEST_ROOT";
 
 fn bundle_fixture(root: &Path, stage: &Path) -> (RepoManifest, String) {
     git(root, &["init", "--quiet"]).unwrap();
@@ -104,19 +104,19 @@ fn isolated_preflight_and_parallel_preparation_regressions() {
         // Fake SSH accepts the same final shell-command argument as real SSH.
         executable(
             &bin.join("ssh"),
-            "#!/bin/sh\nprintf 'ssh\\n' >> \"$JCODE_CLOUD_LATENCY_TEST_ROOT/calls\"\ncase \"$JCODE_CLOUD_LATENCY_TEST_MODE\" in history*) cat \"$JCODE_CLOUD_LATENCY_TEST_ROOT/remote-history\"; exit 0;; esac\nfor arg do command=$arg; done\nexec /bin/sh -c \"$command\"\n",
+            "#!/bin/sh\nprintf 'ssh\\n' >> \"$KCODE_CLOUD_LATENCY_TEST_ROOT/calls\"\ncase \"$KCODE_CLOUD_LATENCY_TEST_MODE\" in history*) cat \"$KCODE_CLOUD_LATENCY_TEST_ROOT/remote-history\"; exit 0;; esac\nfor arg do command=$arg; done\nexec /bin/sh -c \"$command\"\n",
         );
         executable(
             &root.path().join("transport"),
-            "#!/bin/sh\nprintf 'transport\\n' >> \"$JCODE_CLOUD_LATENCY_TEST_ROOT/calls\"\nexec /bin/sh -c \"$1\"\n",
+            "#!/bin/sh\nprintf 'transport\\n' >> \"$KCODE_CLOUD_LATENCY_TEST_ROOT/calls\"\nexec /bin/sh -c \"$1\"\n",
         );
         // The remote binary path deliberately contains spaces and a quote.
         executable(
             &root.path().join("remote ' binary"),
             r#"#!/bin/sh
-if [ "$3" = --version ]; then echo 'jcode v0.0.0-test'; exit 0; fi
-printf '%s\n' "$*" >> "$JCODE_CLOUD_LATENCY_TEST_ROOT/probes"
-case "$JCODE_CLOUD_LATENCY_TEST_MODE" in
+if [ "$3" = --version ]; then echo 'kcode v0.0.0-test'; exit 0; fi
+printf '%s\n' "$*" >> "$KCODE_CLOUD_LATENCY_TEST_ROOT/probes"
+case "$KCODE_CLOUD_LATENCY_TEST_MODE" in
   *failure)
     if [ "$4" = credentials ]; then
       echo 'unrecognized subcommand credentials' >&2
@@ -125,18 +125,18 @@ case "$JCODE_CLOUD_LATENCY_TEST_MODE" in
     ;;
   overlap)
     n=0
-    while [ ! -f "$JCODE_CLOUD_LATENCY_TEST_ROOT/local-started" ]; do
+    while [ ! -f "$KCODE_CLOUD_LATENCY_TEST_ROOT/local-started" ]; do
       n=$((n + 1))
       if [ "$n" -ge 100 ]; then echo 'local preparation did not overlap' >&2; exit 9; fi
       sleep 0.02
     done
-    touch "$JCODE_CLOUD_LATENCY_TEST_ROOT/overlapped"
+    touch "$KCODE_CLOUD_LATENCY_TEST_ROOT/overlapped"
     echo 'intentional preflight stop' >&2
     exit 9
     ;;
   join-error)
     sleep 0.1
-    touch "$JCODE_CLOUD_LATENCY_TEST_ROOT/preflight-finished"
+    touch "$KCODE_CLOUD_LATENCY_TEST_ROOT/preflight-finished"
     echo 'intentional preflight stop' >&2
     exit 9
     ;;
@@ -147,7 +147,7 @@ esac
         // can proceed while the remote protocol probe is still waiting.
         executable(
             &bin.join("git"),
-            "#!/bin/sh\ncase \"$JCODE_CLOUD_LATENCY_TEST_MODE\" in history*) exec \"$JCODE_CLOUD_REAL_GIT\" \"$@\";; esac\ntouch \"$JCODE_CLOUD_LATENCY_TEST_ROOT/local-started\"\nexit 1\n",
+            "#!/bin/sh\ncase \"$KCODE_CLOUD_LATENCY_TEST_MODE\" in history*) exec \"$KCODE_CLOUD_REAL_GIT\" \"$@\";; esac\ntouch \"$KCODE_CLOUD_LATENCY_TEST_ROOT/local-started\"\nexit 1\n",
         );
         let path = std::env::join_paths(std::iter::once(bin).chain(std::env::split_paths(
             &std::env::var_os("PATH").unwrap_or_default(),
@@ -164,10 +164,10 @@ esac
                 "--nocapture",
             ])
             .env(CHILD_MODE, mode)
-            .env("JCODE_CLOUD_REAL_GIT", real_git)
+            .env("KCODE_CLOUD_REAL_GIT", real_git)
             .env(CHILD_ROOT, root.path())
-            .env("JCODE_HOME", root.path().join("home"))
-            .env("JCODE_SESSION_ID", "latency-session")
+            .env("KCODE_HOME", root.path().join("home"))
+            .env("KCODE_SESSION_ID", "latency-session")
             .env("PATH", path)
             .output()
             .unwrap();

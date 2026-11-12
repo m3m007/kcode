@@ -1,0 +1,26 @@
+[package]
+name = "kcode-swarm"
+version = "0.1.0"
+edition = "2024"
+autobins = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+kcode-enforcement = { path = "../kcode-enforcement" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "fs", "sync", "time"] }
+tree-sitter = "0.25"
+tree-sitter-rust = "0.23"
+streaming-iterator = "0.1"
+cargo_metadata = "0.19"
+command-group = { version = "5", features = ["with-tokio"] }
+krates = "0.22"
+
+[dev-dependencies]
+tempfile = "3"

@@ -38,7 +38,7 @@ env:
 
 jobs:
   quiet-and-ci:
-    if: github.repository == '1jehuang/jcode' && vars.JCODE_V1_PREVIEW_ENABLED != 'false' && github.ref == 'refs/heads/master'
+    if: github.repository == '1jehuang/kcode' && vars.JCODE_V1_PREVIEW_ENABLED != 'false' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 205
     steps:
@@ -71,28 +71,28 @@ jobs:
         include:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            artifact: jcode-linux-x86_64
+            artifact: kcode-linux-x86_64
             compat: true
             hosted: true
           # Match the x86 tenant host for the source-pinned justrust bootstrap.
           # ARM execution separately consumes this job's uploaded archive.
           - os: ubuntu-24.04
             target: aarch64-unknown-linux-gnu
-            artifact: jcode-linux-aarch64
+            artifact: kcode-linux-aarch64
             hosted: true
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: jcode-macos-aarch64
+            artifact: kcode-macos-aarch64
           - os: macos-15-intel
             target: x86_64-apple-darwin
-            artifact: jcode-macos-x86_64
+            artifact: kcode-macos-x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: jcode-windows-x86_64
+            artifact: kcode-windows-x86_64
             msvc: amd64
           - os: windows-11-arm
             target: aarch64-pc-windows-msvc
-            artifact: jcode-windows-aarch64
+            artifact: kcode-windows-aarch64
             msvc: amd64_arm64
             cargo_args: --no-default-features --features pdf
     steps:
@@ -152,7 +152,7 @@ jobs:
             read -r -a extra_args <<< "$EXTRA_ARGS"
             set -- "${extra_args[@]}"
           fi
-          justrust build --local --locked --release --target "$TARGET" -p jcode --bin jcode "$@"
+          justrust build --local --locked --release --target "$TARGET" -p kcode --bin kcode "$@"
       - name: Build Windows preview with MSVC environment
         if: runner.os == 'Windows'
         shell: pwsh
@@ -168,7 +168,7 @@ jobs:
           if ($env:EXTRA_ARGS) {
             $extraArgs = $env:EXTRA_ARGS -split '\s+'
           }
-          & justrust build --local --locked --release --target $env:TARGET -p jcode --bin jcode @extraArgs
+          & justrust build --local --locked --release --target $env:TARGET -p kcode --bin kcode @extraArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package native binary
         if: matrix.compat != true
@@ -181,10 +181,10 @@ jobs:
           mkdir -p dist
           extension=""
           if [ "$RUNNER_OS" = Windows ]; then extension=.exe; fi
-          cp "target/$TARGET/release/jcode$extension" "dist/$ARTIFACT$extension"
+          cp "target/$TARGET/release/kcode$extension" "dist/$ARTIFACT$extension"
           if [ "$RUNNER_OS" = macOS ]; then
-            codesign --force --sign - --identifier com.jcode.cli "dist/$ARTIFACT"
-            codesign -dv "dist/$ARTIFACT" 2>&1 | grep -qx 'Identifier=com.jcode.cli'
+            codesign --force --sign - --identifier com.kcode.cli "dist/$ARTIFACT"
+            codesign -dv "dist/$ARTIFACT" 2>&1 | grep -qx 'Identifier=com.kcode.cli'
           fi
           # Never execute cross-built ARM on the x86 packaging caller.
           if [ "$TARGET" != aarch64-unknown-linux-gnu ]; then
@@ -196,7 +196,7 @@ jobs:
         if: matrix.compat == true
         shell: bash
         run: |
-          dist/jcode-linux-x86_64 --no-update --no-selfdev --version | tee "$RUNNER_TEMP/preview-version.txt"
+          dist/kcode-linux-x86_64 --no-update --no-selfdev --version | tee "$RUNNER_TEMP/preview-version.txt"
           grep -F "$JCODE_BUILD_SEMVER" "$RUNNER_TEMP/preview-version.txt"
       - name: Verify locked source
         shell: bash
@@ -220,15 +220,15 @@ jobs:
       # No hosted credentials enter this job.
       - uses: actions/download-artifact@v4
         with:
-          name: preview-jcode-linux-aarch64
+          name: preview-kcode-linux-aarch64
           path: dist
       - name: Verify uploaded ARM archive on native Ubuntu 24.04
         shell: bash
-        run: python3 scripts/verify_preview_arm_runtime.py dist/jcode-linux-aarch64.tar.gz
+        run: python3 scripts/verify_preview_arm_runtime.py dist/kcode-linux-aarch64.tar.gz
 
   publish:
     needs: [quiet-and-ci, build, native-arm-runtime]
-    if: github.repository == '1jehuang/jcode' && vars.JCODE_V1_PREVIEW_ENABLED != 'false'
+    if: github.repository == '1jehuang/kcode' && vars.JCODE_V1_PREVIEW_ENABLED != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -241,7 +241,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          pattern: preview-jcode-*
+          pattern: preview-kcode-*
           merge-multiple: true
           path: dist
       - name: Publish validated current head or explicitly pinned master snapshot
@@ -265,7 +265,7 @@ jobs:
       - name: Dispatch trusted SDK preview publication
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run publish-typescript-sdk.yml --repo "$GITHUB_REPOSITORY" --ref master -f "jcode_release_tag=$JCODE_BUILD_SEMVER"
+        run: gh workflow run publish-typescript-sdk.yml --repo "$GITHUB_REPOSITORY" --ref master -f "kcode_release_tag=$JCODE_BUILD_SEMVER"
 
   announce:
     needs: publish

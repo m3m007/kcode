@@ -8,7 +8,7 @@ A workflow definition or successful build alone is not an acceptance result.
 
 ## Coordinated group commands
 
-`/cloud` and `jcode cloud move` include the selected session's associated swarm.
+`/cloud` and `kcode cloud move` include the selected session's associated swarm.
 Use `/cloud --dry-run` to preview, and repeat `--include-session <id>` to opt in
 independent sessions sharing the same checkout. `--session-only` explicitly
 selects the legacy single-session path and conflicts with `--include-session`.
@@ -105,20 +105,20 @@ Use an already-built executable, with an absolute path recommended:
 
 ```bash
 python3 scripts/test_cloud_acceptance.py \
-  --binary /absolute/path/to/jcode --repeat 2 \
+  --binary /absolute/path/to/kcode --repeat 2 \
   --artifacts "$PWD/cloud-acceptance-results"
 ```
 
 `--artifacts` must name a **new** directory. Without it, the runner creates one
-under `JCODE_SCRATCH_DIR`, or the system temporary directory, and prints its path.
+under `KCODE_SCRATCH_DIR`, or the system temporary directory, and prints its path.
 Run a single TUI case or a single lower layer when diagnosing a failure:
 
 ```bash
-python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/jcode \
+python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/kcode \
   --layers tui --scenario transfer_outage_retry --repeat 1
-python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/jcode \
+python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/kcode \
   --layers credentials --repeat 1
-python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/jcode \
+python3 scripts/test_cloud_acceptance.py --binary /absolute/path/to/kcode \
   --layers group --repeat 1
 ```
 
@@ -127,7 +127,7 @@ so pair it with `--layers tui` for a one-case run. The underlying credential sui
 also supports unittest's individual test selection:
 
 ```bash
-python3 tests/test_cloud_credentials.py /absolute/path/to/jcode \
+python3 tests/test_cloud_credentials.py /absolute/path/to/kcode \
   CloudCredentials.test_return_conflict_restores_cloud_ownership
 ```
 
@@ -147,7 +147,7 @@ configuration and this documentation also trigger it.
 The workflow follows existing CI conventions: recursive checkout, stable Rust
 with `rust-src`, Rust cache, wrapper disabled and clang/mold linking. It installs
 the repository-pinned justrust client and uses its local CI build path without a
-hosted account, building the locked release `jcode` binary for Linux x86_64. It
+hosted account, building the locked release `kcode` binary for Linux x86_64. It
 checks module declarations before building. Existing quality CI remains responsible
 for the code-size/test-size and other ratchet budgets, this gate does not replace
 them. Build, acceptance and whole-job limits are 75, 40 and 120 minutes respectively.

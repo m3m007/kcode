@@ -2,7 +2,7 @@
 
 ## Repository Scope
 
-- Jcode Desktop is in a separate repository.
+- Kcode Desktop is in a separate repository.
 
 ## TUI style
 
@@ -21,7 +21,7 @@
   waiting until the end of the task. Preserve unrelated changes and never
   force-push unless the user explicitly authorizes it.
 - **Use the user's Git identity** - Create commits with the configured
-  `user.name` and `user.email`. Do not override them with `Jcode`, `Jcode agent`,
+  `user.name` and `user.email`. Do not override them with `Kcode`, `Kcode agent`,
   or a fabricated agent email. Preserve existing contributor attribution when
   integrating work. If no identity is configured, ask rather than inventing one.
 - **Welcome pull requests from everyone** - Review contributions on their merits,
@@ -42,7 +42,7 @@
 ## Provider model discovery
 
 - Model arrays are offline fallbacks, not release allowlists. Providers with a
-  catalog must discover new model IDs without a Jcode release and expose them
+  catalog must discover new model IDs without a Kcode release and expose them
   through switching lists and structured model routes.
 - Implement both cached prefetch and explicit refresh. Explicit refresh must
   bypass fresh caches. Preserve the last good catalog on network, authentication,
@@ -56,21 +56,21 @@
   presenting a hardcoded list or a no-op refresh as live discovery.
 
 ## Install Notes
-- `~/.local/bin/jcode` is the launcher symlink used from `PATH`.
-- `~/.jcode/builds/current/jcode` is the active local/source-build channel; self-dev builds and `scripts/install_release.sh` point the launcher here.
-- `~/.jcode/builds/stable/jcode` is the stable release channel; `scripts/install.sh` installs this and points the launcher here.
-- `~/.jcode/builds/versions/<version>/jcode` stores immutable binaries.
-- `~/.jcode/builds/canary/jcode` still exists for canary/testing flows, but it is not the primary self-dev install path.
-- On Windows, the equivalents are `%LOCALAPPDATA%\\jcode\\bin\\jcode.exe` for the launcher, `%LOCALAPPDATA%\\jcode\\builds\\stable\\jcode.exe` for stable, and `%LOCALAPPDATA%\\jcode\\builds\\versions\\<version>\\jcode.exe` for immutable installs; `scripts/install.ps1` currently installs the stable channel.
+- `~/.local/bin/kcode` is the launcher symlink used from `PATH`.
+- `~/.kcode/builds/current/kcode` is the active local/source-build channel; self-dev builds and `scripts/install_release.sh` point the launcher here.
+- `~/.kcode/builds/stable/kcode` is the stable release channel; `scripts/install.sh` installs this and points the launcher here.
+- `~/.kcode/builds/versions/<version>/kcode` stores immutable binaries.
+- `~/.kcode/builds/canary/kcode` still exists for canary/testing flows, but it is not the primary self-dev install path.
+- On Windows, the equivalents are `%LOCALAPPDATA%\\kcode\\bin\\kcode.exe` for the launcher, `%LOCALAPPDATA%\\kcode\\builds\\stable\\kcode.exe` for stable, and `%LOCALAPPDATA%\\kcode\\builds\\versions\\<version>\\kcode.exe` for immutable installs; `scripts/install.ps1` currently installs the stable channel.
 - Ensure `~/.local/bin` is **before** `~/.cargo/bin` in `PATH`.
 
 ## Verifying a change at runtime
 
-`cargo build` alone proves nothing about behavior. `jcode run` and interactive
+`cargo build` alone proves nothing about behavior. `kcode run` and interactive
 sessions are served by the long-lived daemon at
-`~/.jcode/builds/shared-server/jcode`, which is a symlink into
-`~/.jcode/builds/versions/<version>/`. Until that symlink is repointed and the
-daemon restarted (`jcode self-dev --build`), a freshly built binary is inert and
+`~/.kcode/builds/shared-server/kcode`, which is a symlink into
+`~/.kcode/builds/versions/<version>/`. Until that symlink is repointed and the
+daemon restarted (`kcode self-dev --build`), a freshly built binary is inert and
 every runtime check silently measures the old code.
 
 To test a change without disturbing the shared daemon or the caller's session,
@@ -78,7 +78,7 @@ run your build against its own socket:
 
 ```bash
 cargo build --profile selfdev
-./target/selfdev/jcode run --no-update --socket /run/user/1000/jcode-mytest.sock '<prompt>'
+./target/selfdev/kcode run --no-update --socket /run/user/1000/kcode-mytest.sock '<prompt>'
 ```
 
 Two things that waste time otherwise:
@@ -87,5 +87,5 @@ Two things that waste time otherwise:
   code path with it produces no visible output under `--trace`. Use `eprintln!`
   for throwaway diagnostics and delete it before committing.
 - Confirm which binary you are actually inspecting. `strings` on
-  `builds/shared-server/jcode` reads a 70-byte symlink, not a program; resolve it
+  `builds/shared-server/kcode` reads a 70-byte symlink, not a program; resolve it
   with `readlink -f` first.

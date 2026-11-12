@@ -24,9 +24,9 @@ Gemini protocol reference checked against the official Google AI ListModels API 
 
 All Rust checks/tests used hosted justrust. `justrust show` confirmed `where remote on hosted` for the provider regression run.
 
-- `justrust check -p jcode-provider-gemini-runtime -p jcode-provider-openrouter-runtime`: passed.
-- `justrust check -p jcode-provider-copilot-runtime -p jcode-provider-cursor-runtime -p jcode-provider-antigravity-runtime -p jcode-provider-bedrock`: passed.
-- `justrust check -p jcode-provider-bedrock --features aws-sdk`: passed.
+- `justrust check -p kcode-provider-gemini-runtime -p kcode-provider-openrouter-runtime`: passed.
+- `justrust check -p kcode-provider-copilot-runtime -p kcode-provider-cursor-runtime -p kcode-provider-antigravity-runtime -p kcode-provider-bedrock`: passed.
+- `justrust check -p kcode-provider-bedrock --features aws-sdk`: passed.
 - OpenRouter catalog merge regression group: 7 passed, including disabled-catalog auth/network suppression.
 - Gemini new local HTTP regression: passed. Exercises two pages, opaque token encoding, chat capability filtering, auth failure, repeated pagination token, and retained warm cache after failures.
 - Gemini complete library suite: 40 passed, 1 failed. The unrelated pre-existing `build_tools_keeps_required_when_the_object_declares_no_properties` expectation fails at gemini_tests.rs:921: expected `required: ["anything"]`, actual null after schema sanitization. This lane does not modify schema normalization.
@@ -43,7 +43,7 @@ Representative hosted run ids: `20261027-231440770-3842852` (OpenRouter), `20261
 - Static-only custom providers remain intentionally non-discoverable until `model_catalog` is enabled. Azure deployments and arbitrary endpoints need their explicit configuration contract; a universal `/models` assumption is not imposed on them.
 - Bedrock without `aws-sdk` remains cache/static-only and reports unsupported live refresh. First-page inference-profile permission failures remain best-effort so foundation-model discovery still works for accounts without ListInferenceProfiles permission.
 - No claim is made that every discovered model is entitled, enabled in the current region, tool-capable, or invokable. The provider remains authoritative at request time.
-- Hosted justrust reports disabled build slots after its reflink probe and downstream rebuild cost from Bedrock through jcode-base. For example run `20261027-232216783-3876421` attributed about 5.6 seconds to downstream rebuilds. No unrequested crate restructuring was performed.
+- Hosted justrust reports disabled build slots after its reflink probe and downstream rebuild cost from Bedrock through kcode-base. For example run `20261027-232216783-3876421` attributed about 5.6 seconds to downstream rebuilds. No unrequested crate restructuring was performed.
 
 ## Integrated follow-through
 

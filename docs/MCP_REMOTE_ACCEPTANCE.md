@@ -96,7 +96,7 @@ The active repository's unrelated dirty files were never edited.
 
 ## Public CLI workflow observations
 
-The packaged stdlib-only fixture used isolated HOME/JCODE_HOME, a real loopback
+The packaged stdlib-only fixture used isolated HOME/KCODE_HOME, a real loopback
 MCP/OAuth server, a private temporary directory, and browser-command guards.
 It inherited no API keys. It made no LLM call or deployment. All ten cases
 passed; no fixture errors were recorded.
@@ -125,13 +125,13 @@ Every Rust command below used hosted justrust. `justrust show` recorded
 
 | Label | Command after `justrust` | Run ID | Observed result |
 |---|---|---|---|
-| Check | `check --remote -p jcode-base -p jcode-app-core -p jcode --lib --tests` | `20261013-080005474-857733` | Passed |
-| B | `test --remote -p jcode-base --lib mcp::` | `20261013-080056187-863499` | 113 passed, 0 failed |
-| M | `test --remote -p jcode-app-core --lib mcp -- --nocapture` | `20261013-080129343-866464` | 54 passed across two isolated runs, 0 failed |
-| A | `test --remote -p jcode-app-core --lib agent::tests::` | `20261013-080158147-869510` | 79 passed, 0 failed |
-| C | `test --remote -p jcode --lib mcp` | `20261013-080212305-871126` | 11 passed, 0 failed |
-| Build | `build --remote --profile selfdev --bin jcode` | `20261013-080235863-873381` | Passed; pinned binary preserved before mutations |
-| S | `test --remote -p jcode-base --test mcp_stdio_collision_integration` | `20261013-080941290-912893` | 1 integration passed, reported by parent and isolated child |
+| Check | `check --remote -p kcode-base -p kcode-app-core -p kcode --lib --tests` | `20261013-080005474-857733` | Passed |
+| B | `test --remote -p kcode-base --lib mcp::` | `20261013-080056187-863499` | 113 passed, 0 failed |
+| M | `test --remote -p kcode-app-core --lib mcp -- --nocapture` | `20261013-080129343-866464` | 54 passed across two isolated runs, 0 failed |
+| A | `test --remote -p kcode-app-core --lib agent::tests::` | `20261013-080158147-869510` | 79 passed, 0 failed |
+| C | `test --remote -p kcode --lib mcp` | `20261013-080212305-871126` | 11 passed, 0 failed |
+| Build | `build --remote --profile selfdev --bin kcode` | `20261013-080235863-873381` | Passed; pinned binary preserved before mutations |
+| S | `test --remote -p kcode-base --test mcp_stdio_collision_integration` | `20261013-080941290-912893` | 1 integration passed, reported by parent and isolated child |
 | Negative compile | Same check command as Check | `20261013-081053803-920453` | Passed before negative tests |
 | Negative deadline | Base filtered deadline test | `20261013-081104975-921505` | Expected 1 assertion failure, exit 101 |
 | Negative app-core | App-core `mcp_remote_cache` filter | `20261013-081116561-922377` | Expected 4 assertion failures, exit 101 |
@@ -144,15 +144,15 @@ Suite counts overlap. They should not be summed into a count of distinct tests.
 
 ## Reproducing the public CLI acceptance
 
-Requires Python 3.9+ and an explicitly selected freshly built Jcode binary.
+Requires Python 3.9+ and an explicitly selected freshly built Kcode binary.
 The fixture uses only Python's standard library. No real Apple/Expo account,
 credentials, browser login, paid model or deployment is needed.
 
 ```bash
-justrust build --remote --profile selfdev --bin jcode
-scratch="${JCODE_SCRATCH_DIR:-$HOME/.jcode/scratch}"
+justrust build --remote --profile selfdev --bin kcode
+scratch="${KCODE_SCRATCH_DIR:-$HOME/.kcode/scratch}"
 python3 scripts/tests/mcp_cli_acceptance.py \
-  --binary target/selfdev/jcode \
+  --binary target/selfdev/kcode \
   --scratch-root "$scratch" \
   --output "$scratch/mcp-acceptance-replay/results.json"
 ```
@@ -164,8 +164,8 @@ Fixture state is temporary and removed on completion.
 ## Explicit limits and remaining intentional behavior
 
 - Registry measurements do not quantify total TUI/server application startup.
-- Default `jcode run` retains an intentional cold-schema wait of up to five
-  seconds. `JCODE_RUN_MCP_WAIT_MS=0` disables it. Disabled servers and already
+- Default `kcode run` retains an intentional cold-schema wait of up to five
+  seconds. `KCODE_RUN_MCP_WAIT_MS=0` disables it. Disabled servers and already
   registered exact identities no longer consume that wait.
 - Cold or changed explicit-eager schemas may intentionally rebuild the tool
   snapshot and miss the prompt cache. Default auto/deferred mode keeps the eager

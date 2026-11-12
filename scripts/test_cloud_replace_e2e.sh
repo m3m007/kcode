@@ -2,14 +2,14 @@
 # Exercise the real cloud replace CLI against an isolated fake SSH machine.
 set -euo pipefail
 if [[ ${1:-} != --isolated ]]; then
-  BINARY=$(realpath -e "${JCODE_BIN:?set JCODE_BIN to the binary under test}")
+  BINARY=$(realpath -e "${KCODE_BIN:?set KCODE_BIN to the binary under test}")
   SCRIPT=$(realpath -e "$0")
-  W=$(mktemp -d "${JCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-replace-test.XXXXXX")
+  W=$(mktemp -d "${KCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-replace-test.XXXXXX")
   mkdir -p "$W/home" "$W/runtime" "$W/tmp"
   exec env -i PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME="$W/home" \
-    TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" JCODE_RUNTIME_DIR="$W/runtime" \
-    JCODE_HOME="$W/home/.jcode" JCODE_NO_AUTO_UPDATE=1 JCODE_NO_TELEMETRY=1 \
-    JCODE_NON_INTERACTIVE=1 W="$W" JCODE_BIN="$BINARY" bash "$SCRIPT" --isolated
+    TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" KCODE_RUNTIME_DIR="$W/runtime" \
+    KCODE_HOME="$W/home/.kcode" KCODE_NO_AUTO_UPDATE=1 KCODE_NO_TELEMETRY=1 \
+    KCODE_NON_INTERACTIVE=1 W="$W" KCODE_BIN="$BINARY" bash "$SCRIPT" --isolated
 fi
 trap 'echo "Acceptance artifacts: $W"' EXIT
 mkdir -p "$W/local/project space" "$W/cloud/projects" "$W/cloud/home"
@@ -25,23 +25,23 @@ printf 'local untracked\n' > "$REPO/new.txt"
 LOCAL_INDEX=$(sha256sum "$REPO/.git/index")
 {
   printf '#!/usr/bin/env bash\nset -euo pipefail\n'
-  printf 'W=%q\nBINARY=%q\n' "$W" "$JCODE_BIN"
+  printf 'W=%q\nBINARY=%q\n' "$W" "$KCODE_BIN"
   cat <<'TRANSPORT'
 exec bwrap --die-with-parent --ro-bind / / --tmpfs /tmp --unshare-pid --proc /proc --dev /dev \
   --bind "$W/cloud/projects" "$W/local" \
-  --bind "$W/cloud/home" "$W/home" --ro-bind "$BINARY" /tmp/jcode-replace-test \
+  --bind "$W/cloud/home" "$W/home" --ro-bind "$BINARY" /tmp/kcode-replace-test \
   --clearenv --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME "$W/home" \
-  --setenv JCODE_HOME "$W/home/.jcode" --setenv JCODE_NO_AUTO_UPDATE 1 \
-  --setenv JCODE_NO_TELEMETRY 1 --setenv JCODE_NON_INTERACTIVE 1 \
-  --setenv JCODE_RUNTIME_DIR "$W/home/runtime" --setenv XDG_RUNTIME_DIR "$W/home/runtime" \
+  --setenv KCODE_HOME "$W/home/.kcode" --setenv KCODE_NO_AUTO_UPDATE 1 \
+  --setenv KCODE_NO_TELEMETRY 1 --setenv KCODE_NON_INTERACTIVE 1 \
+  --setenv KCODE_RUNTIME_DIR "$W/home/runtime" --setenv XDG_RUNTIME_DIR "$W/home/runtime" \
   --chdir / bash -c "$1"
 TRANSPORT
 } > "$W/transport"
 chmod +x "$W/transport"
 cd "$REPO"
 run_replace() {
-  "$JCODE_BIN" --no-update --no-selfdev cloud replace --host cloud-replace-test \
-    --remote-binary /tmp/jcode-replace-test --transport "$W/transport" "$@"
+  "$KCODE_BIN" --no-update --no-selfdev cloud replace --host cloud-replace-test \
+    --remote-binary /tmp/kcode-replace-test --transport "$W/transport" "$@"
 }
 # Explicit confirmation is required before touching the destination.
 if run_replace --json > "$W/unconfirmed.json" 2> "$W/unconfirmed.err"; then
@@ -60,7 +60,7 @@ CLOUD_REPO="$W/cloud/projects/project space"
 cmp "$REPO/file.txt" "$CLOUD_REPO/file.txt"
 cmp "$REPO/new.txt" "$CLOUD_REPO/new.txt"
 [[ $(git -C "$REPO" rev-parse HEAD) == $(git -C "$CLOUD_REPO" rev-parse HEAD) ]]
-[[ ! -d "$W/home/.jcode/session_leases" ]]
+[[ ! -d "$W/home/.kcode/session_leases" ]]
 
 # Divergent committed, uncommitted, and ignored cloud state all survive in backup.
 printf 'cloud committed\n' > "$CLOUD_REPO/file.txt"
@@ -92,9 +92,9 @@ PY
 [[ $(cat "$BACKUP/ignored.txt") == 'cloud ignored' ]]
 
 # A cloud-owned moved session blocks replacement, even if it is idle.
-mkdir -p "$W/cloud/home/.jcode/session_leases"
+mkdir -p "$W/cloud/home/.kcode/session_leases"
 printf '{"session_id":"active-cloud","epoch":1,"repo_root":"%s","updated_at":"2026-10-26T00:00:00Z"}\n' "$REPO" \
-  > "$W/cloud/home/.jcode/session_leases/active-cloud.json"
+  > "$W/cloud/home/.kcode/session_leases/active-cloud.json"
 printf 'active session work\n' > "$CLOUD_REPO/file.txt"
 if run_replace --yes --json > "$W/active.json" 2> "$W/active.err"; then
   echo 'FAIL: replaced a checkout owned by a cloud session' >&2
@@ -103,13 +103,13 @@ fi
 [[ $(cat "$CLOUD_REPO/file.txt") == 'active session work' ]]
 rg -q 'active-cloud' "$W/active.err"
 # Unknown lease metadata also fails closed rather than risking another session.
-printf 'invalid lease JSON\n' > "$W/cloud/home/.jcode/session_leases/active-cloud.json"
+printf 'invalid lease JSON\n' > "$W/cloud/home/.kcode/session_leases/active-cloud.json"
 if run_replace --yes --json > "$W/corrupt-lease.json" 2> "$W/corrupt-lease.err"; then
   echo 'FAIL: ignored corrupt session ownership metadata' >&2
   exit 1
 fi
 rg -q 'cannot inspect cloud session lease' "$W/corrupt-lease.err"
-rm -- "$W/cloud/home/.jcode/session_leases/active-cloud.json"
+rm -- "$W/cloud/home/.kcode/session_leases/active-cloud.json"
 # Never replace a symlink or modify the checkout it points to.
 mv "$CLOUD_REPO" "$W/cloud/projects/symlink-target"
 ln -s "$W/local/symlink-target" "$CLOUD_REPO"

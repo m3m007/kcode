@@ -71,12 +71,12 @@ fn checked_id(id: &str) -> Result<()> {
 
 fn group_dir(id: &str) -> Result<PathBuf> {
     checked_id(id)?;
-    Ok(storage::jcode_dir()?.join("cloud_groups").join(id))
+    Ok(storage::kcode_dir()?.join("cloud_groups").join(id))
 }
 
 fn member_marker(id: &str) -> Result<PathBuf> {
     checked_id(id)?;
-    Ok(storage::jcode_dir()?
+    Ok(storage::kcode_dir()?
         .join("cloud_group_members")
         .join(format!("{id}.json")))
 }
@@ -102,7 +102,7 @@ pub(super) fn is_group_root(id: &str, epoch: u64) -> Result<bool> {
 /// OS locks are released on process death, unlike lock-directory sentinels.
 /// All group and single-session mutators acquire the same ordered locks.
 pub(super) fn lock_sessions(ids: &[String]) -> Result<Vec<std::fs::File>> {
-    let directory = storage::jcode_dir()?.join("cloud_migration_locks");
+    let directory = storage::kcode_dir()?.join("cloud_migration_locks");
     std::fs::create_dir_all(&directory)?;
     let mut locks = Vec::new();
     for id in ids.iter().collect::<BTreeSet<_>>() {
@@ -321,7 +321,7 @@ fn group_arrival_notice(manifest: &MoveManifest, coordinator: &str, members: &[S
 }
 
 fn excluded_local_sessions(root: &Path, included: &[String]) -> Result<Vec<String>> {
-    excluded_local_sessions_at(&storage::jcode_dir()?.join("sessions"), root, included)
+    excluded_local_sessions_at(&storage::kcode_dir()?.join("sessions"), root, included)
 }
 
 fn excluded_local_sessions_at(

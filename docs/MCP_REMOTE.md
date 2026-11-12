@@ -1,11 +1,11 @@
 # Remote MCP servers
 
-Jcode connects to local stdio servers, Streamable HTTP servers, and legacy
+Kcode connects to local stdio servers, Streamable HTTP servers, and legacy
 HTTP+SSE servers. Existing stdio configurations continue to work.
 
 ## Configuration
 
-Add remote servers to `~/.jcode/mcp.json` or a project `.mcp.json`:
+Add remote servers to `~/.kcode/mcp.json` or a project `.mcp.json`:
 
 ```json
 {
@@ -40,7 +40,7 @@ expansion as stdio configurations. A configured Authorization header takes
 precedence over stored OAuth credentials. Do not put real credentials in
 committed configuration files.
 
-Jcode also reads supported external MCP configuration sources. When the same
+Kcode also reads supported external MCP configuration sources. When the same
 server name has both a local stdio definition and a remote definition, the
 existing local definition is retained. Use a distinct name when you want to
 configure the remote server alongside it.
@@ -48,11 +48,11 @@ configure the remote server alongside it.
 ## Commands
 
 ```sh
-jcode mcp list
-jcode mcp test remote
-jcode mcp login remote
-jcode mcp login remote --no-browser
-jcode mcp logout remote
+kcode mcp list
+kcode mcp test remote
+kcode mcp login remote
+kcode mcp login remote --no-browser
+kcode mcp logout remote
 ```
 
 `test` connects to the configured server, initializes the protocol, lists its
@@ -66,7 +66,7 @@ than opening the system browser; the browser still needs access to the machine's
 loopback callback. If the authorization server does not support dynamic client
 registration, configure an Authorization header instead.
 
-Tokens are stored in the Jcode home directory's `mcp-oauth.json` with restrictive
+Tokens are stored in the Kcode home directory's `mcp-oauth.json` with restrictive
 permissions. They are scoped to the remote resource and refreshed without
 opening a browser. Background startup and ordinary connection attempts never
 start an interactive login. A rejected or missing credential reports the
@@ -94,9 +94,9 @@ call to an offline server waits at most 30 seconds for connection. Cancellation
 and shutdown remove waiters and stop owned response streams. No ordinary tool
 call or startup path waits for an interactive OAuth login.
 
-There is a separate, existing headless behavior: `jcode run` waits up to five
+There is a separate, existing headless behavior: `kcode run` waits up to five
 seconds for enabled servers with no valid cached schemas before its first turn.
-Warm caches skip this wait. Set `JCODE_RUN_MCP_WAIT_MS=0` to disable it, or set a
+Warm caches skip this wait. Set `KCODE_RUN_MCP_WAIT_MS=0` to disable it, or set a
 smaller millisecond budget. Disabled servers do not consume the budget, and
 readiness uses exact server identity rather than normalized tool-name prefixes.
 
@@ -123,7 +123,7 @@ a prompt-cache miss. Warm cached schemas avoid that rebuild when unchanged.
   for shared connections (`20261013-074441115-730779`). Registration still
   returned before the gated network responses. The different machines and load
   conditions are not an implementation speedup or a universal latency bound.
-- Actual native Expo OAuth login succeeded in an isolated Jcode home. A native
+- Actual native Expo OAuth login succeeded in an isolated Kcode home. A native
   initialize/list/shutdown smoke test returned 39 tools in 2.404 seconds. Without
   credentials, the same endpoint returned a login instruction in 0.228 seconds,
   without opening a browser.

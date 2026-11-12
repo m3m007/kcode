@@ -37,7 +37,7 @@ manual attempt. Preview numbers can legitimately have gaps.
 Recovery has no contents-write permission. On CI completion it only accepts
 canonical-repository master push events and checks out trusted master, never
 PR code or workflow artifacts. It cannot publish directly or waive failed CI.
-`JCODE_V1_PREVIEW_ENABLED=false` disables both workflows.
+`KCODE_V1_PREVIEW_ENABLED=false` disables both workflows.
 
 ## November 6, 2026 investigation
 

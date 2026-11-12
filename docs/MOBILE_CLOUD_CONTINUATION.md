@@ -1,7 +1,7 @@
-# Continue a local conversation on Jcode Cloud
+# Continue a local conversation on Kcode Cloud
 
-Mobile transcript sync is opt-in: `jcode mobile enable` requires a signed-in
-Jcode account with mobile-sync entitlement. `jcode mobile status` reports the
+Mobile transcript sync is opt-in: `kcode mobile enable` requires a signed-in
+Kcode account with mobile-sync entitlement. `kcode mobile status` reports the
 local setting. Background sync uploads visible conversation text, summarized
 tool calls, and truncated tool results. It is not a file or credential backup.
 

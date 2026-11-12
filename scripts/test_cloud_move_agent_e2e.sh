@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-level e2e: a real `jcode run --resume` turn locally, `cloud move`,
+# Agent-level e2e: a real `kcode run --resume` turn locally, `cloud move`,
 # a real turn on the (sandboxed) cloud host, proof the local copy refuses to
 # run, `cloud return`, and a real local turn afterward. The model is a fake
 # OpenAI-compatible server that logs what the agent sent.
@@ -7,17 +7,17 @@ set -euo pipefail
 # Re-exec with an allowlisted environment before starting any client or daemon.
 # Even a caller-supplied W is only a parent: never reuse or delete an old run.
 if [[ ${1:-} != --isolated ]]; then
-  JCODE_BIN=$(realpath -e "${JCODE_BIN:?set JCODE_BIN to the jcode binary under test}")
+  KCODE_BIN=$(realpath -e "${KCODE_BIN:?set KCODE_BIN to the kcode binary under test}")
   SCRIPT=$(realpath -e "$0")
-  W=$(mktemp -d "${W:-${JCODE_SCRATCH_DIR:-/tmp}}/cloud-test.XXXXXX")
+  W=$(mktemp -d "${W:-${KCODE_SCRATCH_DIR:-/tmp}}/cloud-test.XXXXXX")
   mkdir -m 700 "$W/home" "$W/runtime" "$W/tmp"
   EXTRA=()
-  for name in CLOUD_JCODE_BIN RETURN_JCODE_BIN CLOUD_UPGRADE_TO; do
+  for name in CLOUD_KCODE_BIN RETURN_KCODE_BIN CLOUD_UPGRADE_TO; do
     if [[ -n ${!name:-} ]]; then EXTRA+=("$name=$(realpath -e "${!name}")"); fi
   done
   exec env -i PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 \
-    HOME="$W/home" TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" JCODE_RUNTIME_DIR="$W/runtime" \
-    JCODE_TEST_WORKSPACE="$W" W="$W" JCODE_BIN="$JCODE_BIN" \
+    HOME="$W/home" TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" KCODE_RUNTIME_DIR="$W/runtime" \
+    KCODE_TEST_WORKSPACE="$W" W="$W" KCODE_BIN="$KCODE_BIN" \
     "${EXTRA[@]}" bash "$SCRIPT" --isolated
 fi
 REPO=$W/repo
@@ -27,9 +27,9 @@ printf -v REPO_Q %q "$REPO"
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
-  env -u JCODE_TEST_WORKSPACE timeout --kill-after=2s 12s python3 - "$W" "$$" <<'PY' || status=1
+  env -u KCODE_TEST_WORKSPACE timeout --kill-after=2s 12s python3 - "$W" "$$" <<'PY' || status=1
 import os, signal, sys, time
-marker = b'JCODE_TEST_WORKSPACE=' + os.fsencode(sys.argv[1])
+marker = b'KCODE_TEST_WORKSPACE=' + os.fsencode(sys.argv[1])
 exclude = {os.getpid(), int(sys.argv[2])}
 def owned():
     found = []
@@ -92,26 +92,26 @@ done
 [[ -s "$W/port" ]] || fail "provider startup timed out"
 PORT=$(cat "$W/port")
 
-MODEL_ENV=("JCODE_OPENAI_COMPAT_API_BASE=http://127.0.0.1:$PORT/v1" OPENAI_COMPAT_API_KEY=x JCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model JCODE_NO_TELEMETRY=1 JCODE_NO_AUTO_UPDATE=1)
+MODEL_ENV=("KCODE_OPENAI_COMPAT_API_BASE=http://127.0.0.1:$PORT/v1" OPENAI_COMPAT_API_KEY=x KCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model KCODE_NO_TELEMETRY=1 KCODE_NO_AUTO_UPDATE=1)
 
 {
   printf '#!/usr/bin/env bash\n'
   printf 'CLOUD_HOME=%q\nCLOUD_REPO=%q\nREPO=%q\nBINARY=%q\nWORKSPACE=%q\n' \
-    "$W/cloud-fs/home" "$W/cloud-fs/repo" "$REPO" "$JCODE_BIN" "$W"
+    "$W/cloud-fs/home" "$W/cloud-fs/repo" "$REPO" "$KCODE_BIN" "$W"
   printf 'MODEL_PORT=%q\n' "$PORT"
   cat <<'EOF'
 exec bwrap --die-with-parent \
   --ro-bind /usr /usr --ro-bind /etc /etc --symlink usr/lib /lib --symlink usr/lib64 /lib64 \
   --symlink usr/bin /bin --symlink usr/bin /sbin --proc /proc --dev /dev --tmpfs /tmp \
   --bind "$CLOUD_HOME" /home/cloud --bind "$CLOUD_REPO" "$REPO" \
-  --ro-bind "$BINARY" /opt/jcode/jcode \
-  --clearenv --setenv HOME /home/cloud --setenv USER cloud --setenv PATH /opt/jcode:/usr/local/bin:/usr/bin \
-  --setenv JCODE_HOME /home/cloud/.jcode --setenv JCODE_CLOUD_HOST_LABEL cloud-e2e \
-  --setenv JCODE_RUNTIME_DIR /home/cloud/runtime --setenv XDG_RUNTIME_DIR /home/cloud/runtime \
-  --setenv JCODE_TEST_WORKSPACE "$WORKSPACE" \
-  --setenv JCODE_NO_AUTO_UPDATE 1 --setenv JCODE_NON_INTERACTIVE 1 --setenv JCODE_NO_TELEMETRY 1 \
-  --setenv JCODE_OPENAI_COMPAT_API_BASE "http://127.0.0.1:$MODEL_PORT/v1" \
-  --setenv OPENAI_COMPAT_API_KEY x --setenv JCODE_OPENAI_COMPAT_DEFAULT_MODEL fake-model \
+  --ro-bind "$BINARY" /opt/kcode/kcode \
+  --clearenv --setenv HOME /home/cloud --setenv USER cloud --setenv PATH /opt/kcode:/usr/local/bin:/usr/bin \
+  --setenv KCODE_HOME /home/cloud/.kcode --setenv KCODE_CLOUD_HOST_LABEL cloud-e2e \
+  --setenv KCODE_RUNTIME_DIR /home/cloud/runtime --setenv XDG_RUNTIME_DIR /home/cloud/runtime \
+  --setenv KCODE_TEST_WORKSPACE "$WORKSPACE" \
+  --setenv KCODE_NO_AUTO_UPDATE 1 --setenv KCODE_NON_INTERACTIVE 1 --setenv KCODE_NO_TELEMETRY 1 \
+  --setenv KCODE_OPENAI_COMPAT_API_BASE "http://127.0.0.1:$MODEL_PORT/v1" \
+  --setenv OPENAI_COMPAT_API_KEY x --setenv KCODE_OPENAI_COMPAT_DEFAULT_MODEL fake-model \
   --unshare-pid --unshare-ipc --unshare-uts --hostname cloud-e2e \
   bash -c "$1"
 EOF
@@ -119,10 +119,10 @@ EOF
 chmod +x "$W/cloud-transport"
 
 export PATH="$W:$PATH"
-export JCODE_HOME=$W/local-home JCODE_CLOUD_TRANSPORT=cloud-transport JCODE_CLOUD_HOST_LABEL=laptop-e2e
+export KCODE_HOME=$W/local-home KCODE_CLOUD_TRANSPORT=cloud-transport KCODE_CLOUD_HOST_LABEL=laptop-e2e
 export "${MODEL_ENV[@]}"
-unset JCODE_SESSION_ID JCODE_SOCKET
-RUN=(timeout --kill-after=5s 90s "$JCODE_BIN" --no-update --no-selfdev --provider openai-compatible --model fake-model)
+unset KCODE_SESSION_ID KCODE_SOCKET
+RUN=(timeout --kill-after=5s 90s "$KCODE_BIN" --no-update --no-selfdev --provider openai-compatible --model fake-model)
 CLOUD() { timeout --kill-after=5s 90s "$W/cloud-transport" "$1"; }
 
 mkdir -p "$REPO"; cd "$REPO"; git init -q -b main
@@ -136,7 +136,7 @@ echo "   session $SID"
 if grep -q '\[model\] ack' "$W/t1.json"; then pass "local turn produced a reply"; else fail "local turn"; fi
 
 echo "== move"
-timeout --kill-after=5s 90s "$JCODE_BIN" --no-update --no-selfdev cloud move --session "$SID" --host cloud-e2e --remote-binary /opt/jcode/jcode --json > "$W/move.json"
+timeout --kill-after=5s 90s "$KCODE_BIN" --no-update --no-selfdev cloud move --session "$SID" --host cloud-e2e --remote-binary /opt/kcode/kcode --json > "$W/move.json"
 pass "moved"
 
 echo "== local copy refuses to run"
@@ -152,7 +152,7 @@ fi
 [[ $(wc -l < "$W/model.log") == "$REQS_BEFORE" ]] || fail "blocked run contacted provider"
 
 echo "== cloud turn (continues the same conversation)"
-CLOUD "cd $REPO_Q && jcode --no-update --no-selfdev --provider openai-compatible --model fake-model --resume $SID run --json 'continue the task'" > "$W/t2.json"
+CLOUD "cd $REPO_Q && kcode --no-update --no-selfdev --provider openai-compatible --model fake-model --resume $SID run --json 'continue the task'" > "$W/t2.json"
 if grep -q 'saw_cloud_notice=True' "$W/t2.json"; then
   pass "cloud model saw the migration notice"
 else
@@ -169,7 +169,7 @@ PY
 CLOUD "cd $REPO_Q && echo 'cloud edit' > b.txt"
 
 echo "== return"
-timeout --kill-after=5s 90s "$JCODE_BIN" --no-update --no-selfdev cloud return --session "$SID" --json > "$W/ret.json"
+timeout --kill-after=5s 90s "$KCODE_BIN" --no-update --no-selfdev cloud return --session "$SID" --json > "$W/ret.json"
 if grep -q '"result": "applied"' "$W/ret.json"; then
   pass "cloud edit merged back"
 else

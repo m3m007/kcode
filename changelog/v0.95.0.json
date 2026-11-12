@@ -3,7 +3,7 @@
   "date": "2026-10-11",
   "highlights": [
     "OpenCode Go models, including grok-4.7 and gpt-6-luna, now route over the Responses API",
-    "Hooks expose turn-end token usage, and turn_start/turn_end now fire for one-shot jcode run turns",
+    "Hooks expose turn-end token usage, and turn_start/turn_end now fire for one-shot kcode run turns",
     "/agents supports per-session worker model overrides"
   ],
   "improvements": [
@@ -16,7 +16,7 @@
   ],
   "fixes": [
     "Ctrl/Alt/Cmd shortcuts work on the Korean 2-Set input source",
-    "The terminal keyboard protocol and TUI modes are restored when jcode exits on a signal",
+    "The terminal keyboard protocol and TUI modes are restored when kcode exits on a signal",
     "Rate-limit and provider reconnect auto-resumes are bounded instead of retrying indefinitely",
     "OpenAI streams recover faster from stalls and OAuth token refresh no longer hangs",
     "Tool calls emitted as DSML/invoke markup text are recovered instead of lost",
@@ -24,7 +24,7 @@
     "Resumed sessions heal a stale credential route so swarm workers inherit the live one",
     "Computer-use screenshots kept in transcripts are bounded in size",
     "The browser tool reuses persistent sessions on macOS without opening repeated windows",
-    "Only one menu bar helper runs when jcode is started with an overridden HOME",
+    "Only one menu bar helper runs when kcode is started with an overridden HOME",
     "Swarm member attribution and restart notices are correct"
   ]
 }

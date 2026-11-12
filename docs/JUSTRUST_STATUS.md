@@ -53,10 +53,10 @@ otherwise-idle UI from freezing its live telemetry in a hibernated frame.
 ## Checks
 
 ```sh
-justrust check -p jcode-tui
-justrust test -p jcode-tui --lib justrust
-justrust test -p jcode-tui --lib
-justrust clippy -p jcode-tui --all-targets --no-deps
+justrust check -p kcode-tui
+justrust test -p kcode-tui --lib justrust
+justrust test -p kcode-tui --lib
+justrust clippy -p kcode-tui --all-targets --no-deps
 ```
 
 Tests cover old API compatibility, session/repository selection, path-component

@@ -75,9 +75,9 @@ fn session_menu_item_title_is_icon_only_without_meaningful_title() {
 #[test]
 fn session_menu_item_title_loads_persisted_todo_title() {
     let _guard = crate::storage::lock_test_env();
-    let previous_home = std::env::var_os("JCODE_HOME");
-    let temp = tempfile::tempdir().expect("create temporary JCODE_HOME");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    let previous_home = std::env::var_os("KCODE_HOME");
+    let temp = tempfile::tempdir().expect("create temporary KCODE_HOME");
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     let session_id = "session_buffalo_1781229104969_6d487ff77287de4f";
     let mut session = crate::session::Session::create_with_id(
@@ -116,18 +116,18 @@ fn session_menu_item_title_loads_persisted_todo_title() {
     );
 
     if let Some(previous_home) = previous_home {
-        crate::env::set_var("JCODE_HOME", previous_home);
+        crate::env::set_var("KCODE_HOME", previous_home);
     } else {
-        crate::env::remove_var("JCODE_HOME");
+        crate::env::remove_var("KCODE_HOME");
     }
 }
 
 #[test]
 fn menu_presence_includes_only_user_root_sessions() {
     let _guard = crate::storage::lock_test_env();
-    let previous_home = std::env::var_os("JCODE_HOME");
-    let temp = tempfile::tempdir().expect("create temporary JCODE_HOME");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    let previous_home = std::env::var_os("KCODE_HOME");
+    let temp = tempfile::tempdir().expect("create temporary KCODE_HOME");
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     let mut root = crate::session::Session::create_with_id(
         "session_fox_root".to_string(),
@@ -168,9 +168,9 @@ fn menu_presence_includes_only_user_root_sessions() {
     debug.mark_closed();
     child.mark_closed();
     if let Some(previous_home) = previous_home {
-        crate::env::set_var("JCODE_HOME", previous_home);
+        crate::env::set_var("KCODE_HOME", previous_home);
     } else {
-        crate::env::remove_var("JCODE_HOME");
+        crate::env::remove_var("KCODE_HOME");
     }
 }
 
@@ -200,7 +200,7 @@ fn menubar_sandbox_detection() {
     assert!(!is_menubar_sandbox(
         false,
         false,
-        Some(OsStr::new("/Users/me/.jcode")),
+        Some(OsStr::new("/Users/me/.kcode")),
         home,
         Some(real),
     ));
@@ -213,7 +213,7 @@ fn menubar_sandbox_detection() {
     assert!(is_menubar_sandbox(
         false,
         false,
-        Some(OsStr::new("/private/tmp/jcode-e2e-home-xyz")),
+        Some(OsStr::new("/private/tmp/kcode-e2e-home-xyz")),
         home,
         Some(real),
     ));
@@ -222,7 +222,7 @@ fn menubar_sandbox_detection() {
     assert!(is_menubar_sandbox(
         false,
         false,
-        Some(OsStr::new("/private/tmp/jcode-e2e-home-xyz")),
+        Some(OsStr::new("/private/tmp/kcode-e2e-home-xyz")),
         home,
         None,
     ));
@@ -233,20 +233,20 @@ fn menubar_sandbox_detection() {
 fn menubar_sandbox_detects_consistent_home_override() {
     use std::path::Path;
 
-    // HOME and JCODE_HOME both overridden consistently (the harness case
+    // HOME and KCODE_HOME both overridden consistently (the harness case
     // that produced duplicate status items) must be a sandbox.
     let tmp = tempfile::tempdir().unwrap();
     let fake_home = tmp.path().join("home");
-    std::fs::create_dir_all(fake_home.join(".jcode")).unwrap();
+    std::fs::create_dir_all(fake_home.join(".kcode")).unwrap();
     let real = Path::new("/Users/me");
     assert!(is_menubar_sandbox(
         false,
         false,
-        Some(fake_home.join(".jcode").as_os_str()),
+        Some(fake_home.join(".kcode").as_os_str()),
         Some(fake_home.as_os_str()),
         Some(real),
     ));
-    // Foreign HOME with no JCODE_HOME override is also a sandbox.
+    // Foreign HOME with no KCODE_HOME override is also a sandbox.
     assert!(is_menubar_sandbox(
         false,
         false,
@@ -261,13 +261,13 @@ fn menubar_sandbox_detects_consistent_home_override() {
 fn menubar_sandbox_accepts_symlinked_real_home() {
     let tmp = tempfile::tempdir().unwrap();
     let real = tmp.path().join("real");
-    std::fs::create_dir_all(real.join(".jcode")).unwrap();
+    std::fs::create_dir_all(real.join(".kcode")).unwrap();
     let link = tmp.path().join("link");
     std::os::unix::fs::symlink(&real, &link).unwrap();
     assert!(!is_menubar_sandbox(
         false,
         false,
-        Some(link.join(".jcode").as_os_str()),
+        Some(link.join(".kcode").as_os_str()),
         Some(link.as_os_str()),
         Some(&real),
     ));
@@ -278,7 +278,7 @@ fn menubar_sandbox_accepts_symlinked_real_home() {
 fn menubar_sandbox_fails_closed_without_passwd_home() {
     use std::ffi::OsStr;
     // passwd lookup failed (real_home == None): always a sandbox, with or
-    // without HOME / JCODE_HOME overrides, so no helper and no lock split.
+    // without HOME / KCODE_HOME overrides, so no helper and no lock split.
     assert!(is_menubar_sandbox(false, false, None, None, None));
     assert!(is_menubar_sandbox(
         false,
@@ -290,7 +290,7 @@ fn menubar_sandbox_fails_closed_without_passwd_home() {
     assert!(is_menubar_sandbox(
         false,
         false,
-        Some(OsStr::new("/tmp/x/.jcode")),
+        Some(OsStr::new("/tmp/x/.kcode")),
         Some(OsStr::new("/tmp/x")),
         None,
     ));
@@ -298,17 +298,17 @@ fn menubar_sandbox_fails_closed_without_passwd_home() {
 
 #[test]
 fn menubar_helper_pids_matches_only_exact_menubar_argv() {
-    let ps = "  100 /Users/me/.local/bin/jcode menubar\n\
-              101 /Users/me/.jcode/builds/versions/1.2/jcode menubar\n\
-              102 /Users/me/.local/bin/jcode serve\n\
-              103 /Users/me/.local/bin/jcode menubar --x\n\
+    let ps = "  100 /Users/me/.local/bin/kcode menubar\n\
+              101 /Users/me/.kcode/builds/versions/1.2/kcode menubar\n\
+              102 /Users/me/.local/bin/kcode serve\n\
+              103 /Users/me/.local/bin/kcode menubar --x\n\
               104 /usr/bin/vim menubar\n\
-              105 /Users/me/.local/bin/jcode menubar\n\
+              105 /Users/me/.local/bin/kcode menubar\n\
               junk\n";
     assert_eq!(menubar_helper_pids(ps, 105), vec![100, 101]);
 }
 
-const PASSWD_PROBE_ENV: &str = "JCODE_MENUBAR_PASSWD_PROBE";
+const PASSWD_PROBE_ENV: &str = "KCODE_MENUBAR_PASSWD_PROBE";
 
 /// Child-mode helper: a no-op unless spawned with PASSWD_PROBE_ENV set, in
 /// which case it prints what `passwd_home_dir()` returns under the child's

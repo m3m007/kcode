@@ -1,0 +1,232 @@
+use anyhow::{Result, bail};
+pub use kcode_terminal_launch::{
+    RUNTIME_ENV_VARS, SpawnAttempt, TerminalCommand, apply_client_terminal_env, apply_runtime_env,
+    build_hook_spawn_command, detected_resume_terminal, expand_home, parse_hook_command,
+    resume_terminal_candidates, sh_escape, shell_command, snapshot_client_terminal_env,
+    spawn_command_in_new_terminal_with,
+};
+use std::path::Path;
+
+/// The configured external spawn hook, if any.
+///
+/// Resolution order: `KCODE_SPAWN_HOOK` env (handled by config env overrides;
+/// empty value disables) then `[terminal] spawn_hook` in config.toml.
+pub fn configured_spawn_hook() -> Option<String> {
+    crate::config::config()
+        .terminal
+        .spawn_hook
+        .as_deref()
+        .map(str::trim)
+        .filter(|hook| !hook.is_empty())
+        .map(str::to_string)
+}
+
+#[cfg(test)]
+mod runtime_env_facade_tests {
+    #[test]
+    fn app_core_portable_runtime_filter_reference_is_exported() {
+        let _: &'static [&'static str] = super::RUNTIME_ENV_VARS;
+        assert!(super::RUNTIME_ENV_VARS.contains(&"KCODE_SOCKET"));
+    }
+
+    #[test]
+    fn contextual_companion_error_requests_safe_local_fallback() {
+        use std::path::Path;
+        let command = super::TerminalCommand::new("kcode", vec!["--resume".into()])
+            .runtime_env(vec![("KCODE_SOCKET".into(), "/tmp/connected.sock".into())]);
+        // An older companion rejects the distinct contextual operation; the
+        // wire-level rejection itself is covered by the companion client tests.
+        let handled =
+            super::try_spawn_via_companion_with(&command, Path::new("/work"), |_request| {
+                Err(crate::companion_client::CompanionError::Failed(
+                    "unknown variant `spawn_terminal_with_runtime`".into(),
+                ))
+            });
+        assert!(
+            !handled,
+            "a rejected contextual request must fall back to a local launch"
+        );
+    }
+}
+
+/// Spawn `command` in a new terminal window/pane.
+///
+/// When a spawn hook is configured (`[terminal] spawn_hook` / `KCODE_SPAWN_HOOK`),
+/// the hook takes over the spawn: kcode runs `<hook> <program> <args...>` with
+/// `KCODE_SPAWN_*` metadata env vars so external programs (tmux, kitty remote,
+/// herd, window managers) control where and how the session appears. If the
+/// hook cannot be started, kcode falls back to its built-in terminal detection.
+pub fn spawn_command_in_new_terminal(command: &TerminalCommand, cwd: &Path) -> Result<bool> {
+    // The user's desktop session owns terminal windows. A running `kcode
+    // companion` spawns there, which is right even when this process is a
+    // daemon started from another session. Without one, spawn locally.
+    if try_spawn_via_companion(command, cwd) {
+        return Ok(true);
+    }
+    if try_spawn_via_configured_hook(command, cwd) {
+        return Ok(true);
+    }
+    kcode_terminal_launch::spawn_command_in_new_terminal_with(command, cwd, |cmd| {
+        crate::platform::spawn_detached(cmd).map(|_| ())
+    })
+}
+
+/// Ask `kcode companion` to open the terminal. `false` when no companion is
+/// running (or it is this process, see `KCODE_COMPANION`), so callers fall back.
+fn try_spawn_via_companion(command: &TerminalCommand, cwd: &Path) -> bool {
+    // Tests must never reach a real companion on the developer's desktop.
+    if std::env::var_os("KCODE_COMPANION").is_some() || crate::auth::running_in_test_harness() {
+        return false;
+    }
+    try_spawn_via_companion_with(command, cwd, |request| {
+        crate::companion_client::request(request, std::time::Duration::from_secs(10))
+    })
+}
+
+/// Shared request-selection path with an injectable transport for isolated
+/// compatibility tests. Any protocol error safely falls back to the local path.
+fn try_spawn_via_companion_with(
+    command: &TerminalCommand,
+    cwd: &Path,
+    mut send: impl FnMut(
+        &crate::companion_client::CompanionRequest,
+    ) -> std::result::Result<
+        crate::companion_client::CompanionResponse,
+        crate::companion_client::CompanionError,
+    >,
+) -> bool {
+    let request = crate::companion_client::CompanionRequest::spawn_terminal(command, cwd);
+    match send(&request) {
+        Ok(_) => true,
+        Err(crate::companion_client::CompanionError::Unavailable) => false,
+        Err(error) => {
+            crate::logging::warn(&format!(
+                "kcode companion could not spawn a terminal ({error}); spawning locally"
+            ));
+            false
+        }
+    }
+}
+
+/// Try launching via the configured spawn hook.
+///
+/// Returns `true` when the hook process started; `false` when no hook is
+/// configured or it failed to start (callers should fall back to the built-in
+/// terminal spawning for their platform).
+pub fn try_spawn_via_configured_hook(command: &TerminalCommand, cwd: &Path) -> bool {
+    let Some(hook) = configured_spawn_hook() else {
+        return false;
+    };
+    match spawn_via_hook(&hook, command, cwd) {
+        Ok(()) => true,
+        Err(error) => {
+            crate::logging::warn(&format!(
+                "Spawn hook '{hook}' failed ({error}); falling back to built-in terminal spawn"
+            ));
+            false
+        }
+    }
+}
+
+fn spawn_via_hook(hook: &str, command: &TerminalCommand, cwd: &Path) -> Result<()> {
+    let mut cmd = build_hook_spawn_command(hook, command, cwd)?;
+    let mut child = cmd.spawn()?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            if !status.success() {
+                bail!("hook exited with {status}");
+            }
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            // Long-running hooks may intentionally own their terminal process.
+            // Reap them asynchronously while treating survival past the startup
+            // window as successful launch admission.
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    crate::logging::info(&format!(
+        "Spawn hook '{hook}' launched terminal spawn (kind={:?} session={:?})",
+        command.kind, command.session_id
+    ));
+    Ok(())
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn spawn_via_hook_runs_hook_with_metadata_env() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::TempDir::new().expect("temp dir");
+        let record = temp.path().join("record.txt");
+        let hook_path = temp.path().join("hook.sh");
+        std::fs::write(
+            &hook_path,
+            format!(
+                "#!/bin/sh\nprintf '%s|%s|%s|%s' \"$KCODE_SPAWN_KIND\" \"$KCODE_SPAWN_SESSION_ID\" \"$KCODE_SPAWN_SWARM_ID\" \"$*\" > {}\n",
+                sh_escape(&record.to_string_lossy())
+            ),
+        )
+        .expect("write hook");
+        std::fs::set_permissions(&hook_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod hook");
+
+        let command = TerminalCommand::new(
+            "/usr/local/bin/kcode",
+            vec!["--resume".to_string(), "ses_hooked".to_string()],
+        )
+        .kind("swarm-agent")
+        .session_id("ses_hooked")
+        .spawn_env("KCODE_SPAWN_SWARM_ID", "swarm-7");
+
+        spawn_via_hook(&hook_path.to_string_lossy(), &command, temp.path())
+            .expect("hook should spawn");
+
+        // The hook runs detached; poll briefly for its output.
+        let mut recorded = String::new();
+        for _ in 0..100 {
+            if let Ok(data) = std::fs::read_to_string(&record)
+                && !data.is_empty()
+            {
+                recorded = data;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert_eq!(
+            recorded, "swarm-agent|ses_hooked|swarm-7|/usr/local/bin/kcode --resume ses_hooked",
+            "hook should receive metadata env and the kcode command as argv"
+        );
+    }
+
+    #[test]
+    fn spawn_via_hook_reports_immediate_nonzero_exit() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::TempDir::new().expect("temp dir");
+        let hook_path = temp.path().join("reject-outside-tmux.sh");
+        std::fs::write(&hook_path, "#!/bin/sh\nexit 1\n").expect("write hook");
+        std::fs::set_permissions(&hook_path, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod hook");
+
+        let command = TerminalCommand::new(
+            "/usr/local/bin/kcode",
+            vec!["--resume".to_string(), "ses_fallback".to_string()],
+        )
+        .kind("swarm-agent")
+        .session_id("ses_fallback");
+
+        let error = spawn_via_hook(&hook_path.to_string_lossy(), &command, temp.path())
+            .expect_err("non-zero hook exit must trigger built-in/headless fallback");
+        assert!(error.to_string().contains("hook exited with"));
+    }
+}

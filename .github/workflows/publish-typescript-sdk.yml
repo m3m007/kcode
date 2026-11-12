@@ -9,13 +9,13 @@ env:
 on:
   workflow_call:
     inputs:
-      jcode_release_tag:
+      kcode_release_tag:
         type: string
         required: true
   workflow_dispatch:
     inputs:
-      jcode_release_tag:
-        description: Released jcode tag whose binaries should be bundled
+      kcode_release_tag:
+        description: Released kcode tag whose binaries should be bundled
         required: true
 
 permissions:
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   publish:
-    name: Publish @1jehuang/jcode-sdk
+    name: Publish @1jehuang/kcode-sdk
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,7 +48,7 @@ jobs:
 
       - name: Enforce Rust and TypeScript SDK surface parity
         working-directory: ${{ github.workspace }}
-        run: cargo test -p jcode-sdk parity -- --nocapture
+        run: cargo test -p kcode-sdk parity -- --nocapture
 
       - name: Install dependencies
         run: npm ci
@@ -64,22 +64,22 @@ jobs:
         id: channel
         working-directory: ${{ github.workspace }}
         env:
-          JCODE_RELEASE_TAG: ${{ inputs.jcode_release_tag }}
+          JCODE_RELEASE_TAG: ${{ inputs.kcode_release_tag }}
         run: node scripts/version_sdk_release.mjs "$JCODE_RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Download released jcode runtimes
+      - name: Download released kcode runtimes
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p sdk-runtime-assets
-          gh release download "${{ inputs.jcode_release_tag }}" --dir sdk-runtime-assets \
-            --pattern 'jcode-linux-x86_64.tar.gz' \
-            --pattern 'jcode-linux-aarch64.tar.gz' \
-            --pattern 'jcode-macos-x86_64.tar.gz' \
-            --pattern 'jcode-macos-aarch64.tar.gz' \
-            --pattern 'jcode-windows-x86_64.tar.gz' \
-            --pattern 'jcode-windows-aarch64.tar.gz'
+          gh release download "${{ inputs.kcode_release_tag }}" --dir sdk-runtime-assets \
+            --pattern 'kcode-linux-x86_64.tar.gz' \
+            --pattern 'kcode-linux-aarch64.tar.gz' \
+            --pattern 'kcode-macos-x86_64.tar.gz' \
+            --pattern 'kcode-macos-aarch64.tar.gz' \
+            --pattern 'kcode-windows-x86_64.tar.gz' \
+            --pattern 'kcode-windows-aarch64.tar.gz'
 
       - name: Prepare platform packages
         working-directory: ${{ github.workspace }}

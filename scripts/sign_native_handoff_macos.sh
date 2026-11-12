@@ -16,7 +16,7 @@ if not match:
 print(match.group(1))
 PY
 )
-[[ "${GITHUB_REPOSITORY:-}" == 1jehuang/jcode && "${GITHUB_REF:-}" == refs/heads/master ]] || {
+[[ "${GITHUB_REPOSITORY:-}" == 1jehuang/kcode && "${GITHUB_REF:-}" == refs/heads/master ]] || {
     echo 'Signing requires canonical master' >&2; exit 1;
 }
 [[ "$(uname -s)" == Darwin ]] || { echo 'Signing requires macOS' >&2; exit 1; }
@@ -82,17 +82,17 @@ print(matches[0])
 PY
 )
 mkdir signed-handoff
-cp handoff/jcode signed-handoff/jcode
-chmod 755 signed-handoff/jcode
+cp handoff/kcode signed-handoff/kcode
+chmod 755 signed-handoff/kcode
 codesign --force --sign "$certificate_sha1" --keychain "$keychain" \
-    --identifier com.jcode.cli --options runtime --timestamp signed-handoff/jcode
+    --identifier com.kcode.cli --options runtime --timestamp signed-handoff/kcode
 echo 'Developer ID signature created'
 # Match justrust's Apple Developer ID chain and stable-identifier requirement,
 # additionally binding the leaf Team ID to the exact identity selected above.
-requirement='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and identifier "com.jcode.cli"'
+requirement='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and identifier "com.kcode.cli"'
 requirement+=" and certificate leaf[subject.OU] = \"$team_id\""
 # The leading '=' selects inline requirement text, otherwise codesign opens a file.
-codesign --verify --strict --verbose=2 -R "=$requirement" signed-handoff/jcode
+codesign --verify --strict --verbose=2 -R "=$requirement" signed-handoff/kcode
 # Exercise the signed image with the same credential-free, bounded native smoke
 # checks before sending anything to Apple's notary service.
 python3 - <<'PY'
@@ -104,8 +104,8 @@ smoke(Path('signed-handoff'))
 PY
 # CLI executables cannot carry stapled tickets. Preserve the accepted submission
 # result with the signed ZIP instead of claiming stapler or offline Gatekeeper acceptance.
-ditto -c -k --keepParent signed-handoff/jcode "$work/jcode.zip"
-xcrun notarytool submit "$work/jcode.zip" --key "$work/AuthKey.p8" \
+ditto -c -k --keepParent signed-handoff/kcode "$work/kcode.zip"
+xcrun notarytool submit "$work/kcode.zip" --key "$work/AuthKey.p8" \
     --key-id "$APPLE_NOTARY_KEY_ID" --issuer "$APPLE_NOTARY_ISSUER" \
     --wait --timeout 20m --output-format json > signed-handoff/notarization.json
 python3 - <<'PY'
@@ -115,7 +115,7 @@ result = json.loads(Path('signed-handoff/notarization.json').read_text())
 if result.get('status') != 'Accepted':
     raise SystemExit('Notarization was not accepted')
 PY
-cp "$work/jcode.zip" signed-handoff/jcode.zip
+cp "$work/kcode.zip" signed-handoff/kcode.zip
 # The original provenance describes the unsigned binary only. Record the
 # transformation without silently replacing the original build digest.
 python3 - <<'PY'
@@ -124,7 +124,7 @@ import json
 from pathlib import Path
 original = json.loads(Path('handoff/provenance.json').read_text())
 record = {'unsigned_provenance': original,
-          'signed_sha256': hashlib.sha256(Path('signed-handoff/jcode').read_bytes()).hexdigest(),
+          'signed_sha256': hashlib.sha256(Path('signed-handoff/kcode').read_bytes()).hexdigest(),
           'notarization': json.loads(Path('signed-handoff/notarization.json').read_text())}
 Path('signed-handoff/signing-provenance.json').write_text(json.dumps(record, indent=2) + '\n')
 PY

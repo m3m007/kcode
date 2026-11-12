@@ -4,18 +4,18 @@ use crate::cli::provider_init::ProviderChoice;
 #[test]
 fn cloud_lifecycle_commands_parse_their_contracts() {
     for command in ["send", "status", "wait", "logs", "inspect", "run-detached"] {
-        let mut argv = vec!["jcode", "cloud", command, "--session", "session_test"];
+        let mut argv = vec!["kcode", "cloud", command, "--session", "session_test"];
         if matches!(command, "send" | "run-detached") {
             argv.push("continue the task");
         }
         assert!(Args::try_parse_from(argv).is_ok(), "{command}");
         assert!(
-            Args::try_parse_from(["jcode", "cloud", command]).is_err(),
+            Args::try_parse_from(["kcode", "cloud", command]).is_err(),
             "{command} requires a session"
         );
     }
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "wait",
         "--session",
@@ -31,7 +31,7 @@ fn cloud_lifecycle_commands_parse_their_contracts() {
         matches!(args.command, Some(Command::Cloud(CloudCommand::Wait { session, timeout: 0, messages: 3, json: true })) if session == "s")
     );
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "fork",
         "--session",
@@ -46,10 +46,10 @@ fn cloud_lifecycle_commands_parse_their_contracts() {
     assert!(
         matches!(args.command, Some(Command::Cloud(CloudCommand::Fork { session: Some(parent), prompt: Some(prompt), target, json: true })) if parent == "parent" && prompt == "child task" && target.host.as_deref() == Some("my-box"))
     );
-    assert!(Args::try_parse_from(["jcode", "cloud", "fork"]).is_ok());
-    assert!(Args::try_parse_from(["jcode", "cloud", "doctor", "--json"]).is_ok());
+    assert!(Args::try_parse_from(["kcode", "cloud", "fork"]).is_ok());
+    assert!(Args::try_parse_from(["kcode", "cloud", "doctor", "--json"]).is_ok());
     let args =
-        Args::try_parse_from(["jcode", "cloud", "problems", "--limit", "0", "--json"]).unwrap();
+        Args::try_parse_from(["kcode", "cloud", "problems", "--limit", "0", "--json"]).unwrap();
     assert!(matches!(
         args.command,
         Some(Command::Cloud(CloudCommand::Problems {
@@ -61,7 +61,7 @@ fn cloud_lifecycle_commands_parse_their_contracts() {
 
 #[test]
 fn cloud_move_selection_defaults_to_swarm_and_independent_sessions_are_explicit() {
-    let args = Args::try_parse_from(["jcode", "cloud", "move"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "cloud", "move"]).unwrap();
     assert!(
         matches!(args.command, Some(Command::Cloud(CloudCommand::Move {
         include_sessions, session_only: false, ..
@@ -69,7 +69,7 @@ fn cloud_move_selection_defaults_to_swarm_and_independent_sessions_are_explicit(
     );
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "move",
         "--include-session",
@@ -85,7 +85,7 @@ fn cloud_move_selection_defaults_to_swarm_and_independent_sessions_are_explicit(
     })) if include_sessions == ["first", "second"])
     );
 
-    let args = Args::try_parse_from(["jcode", "cloud", "move", "--session-only"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "cloud", "move", "--session-only"]).unwrap();
     assert!(matches!(
         args.command,
         Some(Command::Cloud(CloudCommand::Move {
@@ -95,7 +95,7 @@ fn cloud_move_selection_defaults_to_swarm_and_independent_sessions_are_explicit(
     ));
     assert!(
         Args::try_parse_from([
-            "jcode",
+            "kcode",
             "cloud",
             "move",
             "--session-only",
@@ -109,18 +109,18 @@ fn cloud_move_selection_defaults_to_swarm_and_independent_sessions_are_explicit(
 #[test]
 fn update_channel_cli_is_explicit_and_limited_to_preview_and_stable() {
     for channel in ["preview", "stable"] {
-        let args = Args::try_parse_from(["jcode", "update", "--channel", channel]).unwrap();
+        let args = Args::try_parse_from(["kcode", "update", "--channel", channel]).unwrap();
         assert!(
             matches!(args.command, Some(Command::Update { channel: Some(value) }) if value == channel)
         );
     }
-    let args = Args::try_parse_from(["jcode", "update"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "update"]).unwrap();
     assert!(matches!(
         args.command,
         Some(Command::Update { channel: None })
     ));
     for channel in ["main", "nightly", "unknown"] {
-        assert!(Args::try_parse_from(["jcode", "update", "--channel", channel]).is_err());
+        assert!(Args::try_parse_from(["kcode", "update", "--channel", channel]).is_err());
     }
 }
 
@@ -128,7 +128,7 @@ fn update_channel_cli_is_explicit_and_limited_to_preview_and_stable() {
 fn credential_import_cli_requires_stdin_and_preserves_explicit_provider() {
     for provider in ["openai", "claude"] {
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "auth",
             "import",
             "--provider",
@@ -147,9 +147,9 @@ fn credential_import_cli_requires_stdin_and_preserves_explicit_provider() {
         ));
     }
     for args in [
-        vec!["jcode", "auth", "import", "--provider", "openai"],
-        vec!["jcode", "auth", "import", "--stdin", "--token", "secret"],
-        vec!["jcode", "auth", "import", "--stdin", "--overwrite"],
+        vec!["kcode", "auth", "import", "--provider", "openai"],
+        vec!["kcode", "auth", "import", "--stdin", "--token", "secret"],
+        vec!["kcode", "auth", "import", "--stdin", "--overwrite"],
     ] {
         assert!(Args::try_parse_from(args).is_err());
     }
@@ -158,30 +158,30 @@ fn credential_import_cli_requires_stdin_and_preserves_explicit_provider() {
 #[test]
 fn native_ssh_attach_arguments_parse_and_do_not_steal_local_socket() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "--ssh",
         "dev",
         "--ssh-binary",
-        "/opt/jcode",
+        "/opt/kcode",
         "--ssh-server-socket",
-        "/run/native/jcode.sock",
+        "/run/native/kcode.sock",
         "--remote-working-dir",
         "/srv/project",
         "self-dev",
     ])
     .unwrap();
     assert_eq!(args.ssh.as_deref(), Some("dev"));
-    assert_eq!(args.ssh_binary.as_deref(), Some("/opt/jcode"));
+    assert_eq!(args.ssh_binary.as_deref(), Some("/opt/kcode"));
     assert_eq!(
         args.ssh_server_socket.as_deref(),
-        Some("/run/native/jcode.sock")
+        Some("/run/native/kcode.sock")
     );
     assert_eq!(args.remote_working_dir.as_deref(), Some("/srv/project"));
     assert!(args.socket.is_none());
     for argv in [
-        vec!["jcode", "--ssh", "dev", "--socket", "/local.sock"],
-        vec!["jcode", "--ssh-binary", "/opt/jcode"],
-        vec!["jcode", "--ssh-server-socket", "/remote.sock"],
+        vec!["kcode", "--ssh", "dev", "--socket", "/local.sock"],
+        vec!["kcode", "--ssh-binary", "/opt/kcode"],
+        vec!["kcode", "--ssh-server-socket", "/remote.sock"],
     ] {
         assert!(Args::try_parse_from(argv).is_err());
     }
@@ -191,7 +191,7 @@ fn native_ssh_attach_arguments_parse_and_do_not_steal_local_socket() {
 #[test]
 fn native_server_stdio_preserves_socket_override() {
     let args =
-        Args::try_parse_from(["jcode", "--socket", "/run/native.sock", "server", "stdio"]).unwrap();
+        Args::try_parse_from(["kcode", "--socket", "/run/native.sock", "server", "stdio"]).unwrap();
     assert_eq!(args.socket.as_deref(), Some("/run/native.sock"));
     assert!(matches!(
         args.command,
@@ -203,7 +203,7 @@ fn native_server_stdio_preserves_socket_override() {
 
 #[test]
 fn server_start_and_internal_keepalive_parse() {
-    let args = Args::try_parse_from(["jcode", "server", "start", "--json"])
+    let args = Args::try_parse_from(["kcode", "server", "start", "--json"])
         .expect("server start should parse");
     assert!(matches!(
         args.command,
@@ -212,7 +212,7 @@ fn server_start_and_internal_keepalive_parse() {
         })
     ));
 
-    let keepalive = Args::try_parse_from(["jcode", "server", "keepalive"])
+    let keepalive = Args::try_parse_from(["kcode", "server", "keepalive"])
         .expect("internal server keepalive should parse");
     assert!(matches!(
         keepalive.command,
@@ -224,7 +224,7 @@ fn server_start_and_internal_keepalive_parse() {
 
 #[test]
 fn server_promote_parses_default_and_explicit_version() {
-    let current = Args::try_parse_from(["jcode", "server", "promote", "--json"])
+    let current = Args::try_parse_from(["kcode", "server", "promote", "--json"])
         .expect("server promote should default to current");
     assert!(matches!(
         current.command,
@@ -236,7 +236,7 @@ fn server_promote_parses_default_and_explicit_version() {
         })
     ));
 
-    let explicit = Args::try_parse_from(["jcode", "server", "promote", "abc1234-dirty-deadbeef"])
+    let explicit = Args::try_parse_from(["kcode", "server", "promote", "abc1234-dirty-deadbeef"])
         .expect("server promote should accept an installed version label");
     assert!(matches!(
         explicit.command,
@@ -251,21 +251,21 @@ fn server_promote_parses_default_and_explicit_version() {
 
 #[test]
 fn telemetry_subcommands_parse() {
-    let status = Args::try_parse_from(["jcode", "telemetry", "status", "--json"])
+    let status = Args::try_parse_from(["kcode", "telemetry", "status", "--json"])
         .expect("telemetry status should parse");
     assert!(matches!(
         status.command,
         Some(Command::Telemetry(TelemetryCommand::Status { json: true }))
     ));
 
-    let enable = Args::try_parse_from(["jcode", "telemetry", "enable"])
+    let enable = Args::try_parse_from(["kcode", "telemetry", "enable"])
         .expect("telemetry enable should parse");
     assert!(matches!(
         enable.command,
         Some(Command::Telemetry(TelemetryCommand::Enable))
     ));
 
-    let disable = Args::try_parse_from(["jcode", "telemetry", "disable"])
+    let disable = Args::try_parse_from(["kcode", "telemetry", "disable"])
         .expect("telemetry disable should parse");
     assert!(matches!(
         disable.command,
@@ -275,40 +275,40 @@ fn telemetry_subcommands_parse() {
 
 #[test]
 fn test_provider_choice_aliases_parse() {
-    let args = Args::try_parse_from(["jcode", "--provider", "z.ai", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "z.ai", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::Zai);
 
     let args =
-        Args::try_parse_from(["jcode", "--provider", "kimi-for-coding", "run", "smoke"]).unwrap();
+        Args::try_parse_from(["kcode", "--provider", "kimi-for-coding", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::Kimi);
 
     let args =
-        Args::try_parse_from(["jcode", "--provider", "cerebrascode", "run", "smoke"]).unwrap();
+        Args::try_parse_from(["kcode", "--provider", "cerebrascode", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::Cerebras);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "compat", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "compat", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::OpenaiCompatible);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "bailian", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "bailian", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::AlibabaCodingPlan);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "together", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "together", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::TogetherAi);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "grok", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "grok", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::Xai);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "grok-build"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "grok-build"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::GrokBuild);
 
-    let args = Args::try_parse_from(["jcode", "--provider", "cgc", "run", "smoke"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--provider", "cgc", "run", "smoke"]).unwrap();
     assert_eq!(args.provider, ProviderChoice::Comtegra);
 }
 
 #[test]
 fn serve_server_name_option_parses() {
     let args =
-        Args::try_parse_from(["jcode", "serve", "--server-name", "mount-cloud/fabian"]).unwrap();
+        Args::try_parse_from(["kcode", "serve", "--server-name", "mount-cloud/fabian"]).unwrap();
     match args.command {
         Some(Command::Serve { server_name, .. }) => {
             assert_eq!(server_name.as_deref(), Some("mount-cloud/fabian"));
@@ -320,9 +320,9 @@ fn serve_server_name_option_parses() {
 #[test]
 fn remote_working_dir_option_parses() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "--socket",
-        "/tmp/jcode.sock",
+        "/tmp/kcode.sock",
         "--remote-working-dir",
         "/home/agent/project",
     ])
@@ -336,7 +336,7 @@ fn remote_working_dir_option_parses() {
 
 #[test]
 fn model_list_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "model", "list", "--json", "--verbose"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "model", "list", "--json", "--verbose"]).unwrap();
     match args.command {
         Some(Command::Model(ModelCommand::List { json, verbose })) => {
             assert!(json);
@@ -346,7 +346,7 @@ fn model_list_subcommand_parses() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "sessions",
         "dashboard",
@@ -383,7 +383,7 @@ fn model_list_subcommand_parses() {
 #[test]
 fn session_rename_subcommand_parses() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "session",
         "rename",
         "fox",
@@ -406,7 +406,7 @@ fn session_rename_subcommand_parses() {
         other => panic!("unexpected command: {:?}", other),
     }
 
-    let args = Args::try_parse_from(["jcode", "session", "rename", "fox", "--clear"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "session", "rename", "fox", "--clear"]).unwrap();
     match args.command {
         Some(Command::Session(SessionCommand::Rename {
             session,
@@ -426,7 +426,7 @@ fn session_rename_subcommand_parses() {
 #[test]
 fn cloud_sessions_subcommands_parse() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "sessions",
         "configure",
@@ -466,7 +466,7 @@ fn cloud_sessions_subcommands_parse() {
         other => panic!("unexpected command: {:?}", other),
     }
 
-    let args = Args::try_parse_from(["jcode", "cloud", "sessions", "status", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "cloud", "sessions", "status", "--json"]).unwrap();
     match args.command {
         Some(Command::Cloud(CloudCommand::Sessions {
             action: CloudSessionsCommand::Status { json },
@@ -475,7 +475,7 @@ fn cloud_sessions_subcommands_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "sessions",
         "upload-latest",
@@ -509,7 +509,7 @@ fn cloud_sessions_subcommands_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "sessions",
         "view",
@@ -538,7 +538,7 @@ fn cloud_sessions_subcommands_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "cloud",
         "sessions",
         "sync",
@@ -587,7 +587,7 @@ fn cloud_sessions_subcommands_parse() {
 fn cloud_return_preserves_local_auth_only_when_explicit() {
     for explicit in [false, true] {
         let mut argv = vec![
-            "jcode",
+            "kcode",
             "cloud",
             "return",
             "--session",
@@ -616,7 +616,7 @@ fn cloud_return_preserves_local_auth_only_when_explicit() {
 
 #[test]
 fn login_no_browser_flag_parses() {
-    let args = Args::try_parse_from(["jcode", "login", "--no-browser"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "login", "--no-browser"]).unwrap();
     match args.command {
         Some(Command::Login {
             provider,
@@ -657,7 +657,7 @@ fn login_no_browser_flag_parses() {
         other => panic!("unexpected command: {:?}", other),
     }
 
-    let args = Args::try_parse_from(["jcode", "login", "--headless"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "login", "--headless"]).unwrap();
     match args.command {
         Some(Command::Login { no_browser, .. }) => assert!(no_browser),
         other => panic!("unexpected command: {:?}", other),
@@ -666,7 +666,7 @@ fn login_no_browser_flag_parses() {
 
 #[test]
 fn login_accepts_provider_positional() {
-    let args = Args::try_parse_from(["jcode", "login", "google"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "login", "google"]).unwrap();
     match args.command {
         Some(Command::Login { provider, .. }) => {
             assert_eq!(provider, Some(ProviderChoice::Google));
@@ -679,7 +679,7 @@ fn login_accepts_provider_positional() {
 fn login_scoped_flow_flags_parse_and_reject_unsafe_ids() {
     for action in ["--print-auth-url", "--complete", "--cancel"] {
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "login",
             "--provider",
             "openai",
@@ -697,17 +697,17 @@ fn login_scoped_flow_flags_parse_and_reject_unsafe_ids() {
         "", ".", "..", "../other", "a/b", "a\\b", "a b", "a\n", "é", "a.json", "%2f", "x;touch",
     ] {
         assert!(
-            Args::try_parse_from(["jcode", "login", "--flow-id", id, "--print-auth-url"]).is_err(),
+            Args::try_parse_from(["kcode", "login", "--flow-id", id, "--print-auth-url"]).is_err(),
             "accepted {id:?}"
         );
     }
-    assert!(Args::try_parse_from(["jcode", "login", "--flow-id", &"a".repeat(65)]).is_err());
-    assert!(Args::try_parse_from(["jcode", "login", "--flow-id", &"a".repeat(64)]).is_ok());
-    assert!(Args::try_parse_from(["jcode", "login", "openai", "--cancel"]).is_err());
+    assert!(Args::try_parse_from(["kcode", "login", "--flow-id", &"a".repeat(65)]).is_err());
+    assert!(Args::try_parse_from(["kcode", "login", "--flow-id", &"a".repeat(64)]).is_ok());
+    assert!(Args::try_parse_from(["kcode", "login", "openai", "--cancel"]).is_err());
     for action in ["--print-auth-url", "--complete"] {
         assert!(
             Args::try_parse_from([
-                "jcode",
+                "kcode",
                 "login",
                 "openai",
                 "--flow-id",
@@ -721,7 +721,7 @@ fn login_scoped_flow_flags_parse_and_reject_unsafe_ids() {
     for input in ["--callback-url", "--auth-code"] {
         assert!(
             Args::try_parse_from([
-                "jcode",
+                "kcode",
                 "login",
                 "openai",
                 "--flow-id",
@@ -733,7 +733,7 @@ fn login_scoped_flow_flags_parse_and_reject_unsafe_ids() {
             .is_err()
         );
         assert!(
-            Args::try_parse_from(["jcode", "login", "openai", "--flow-id", "safe", input, "-"])
+            Args::try_parse_from(["kcode", "login", "openai", "--flow-id", "safe", input, "-"])
                 .is_ok()
         );
     }
@@ -742,7 +742,7 @@ fn login_scoped_flow_flags_parse_and_reject_unsafe_ids() {
 #[test]
 fn login_openai_compatible_scriptable_flags_parse() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "--provider",
         "openai-compatible",
         "--model",
@@ -772,7 +772,7 @@ fn login_openai_compatible_scriptable_flags_parse() {
 #[test]
 fn login_openai_compatible_accepts_global_provider_and_model_after_subcommand() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "login",
         "--provider",
         "openai-compatible",
@@ -795,7 +795,7 @@ fn login_openai_compatible_accepts_global_provider_and_model_after_subcommand() 
 
 #[test]
 fn login_scriptable_flags_parse() {
-    let args = Args::try_parse_from(["jcode", "login", "--print-auth-url", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "login", "--print-auth-url", "--json"]).unwrap();
     match args.command {
         Some(Command::Login {
             print_auth_url,
@@ -817,7 +817,7 @@ fn login_scriptable_flags_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "login",
         "--callback-url",
         "http://localhost:1455/auth/callback?code=x&state=y",
@@ -833,7 +833,7 @@ fn login_scriptable_flags_parse() {
         other => panic!("unexpected command: {:?}", other),
     }
 
-    let args = Args::try_parse_from(["jcode", "login", "--auth-code", "abc123"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "login", "--auth-code", "abc123"]).unwrap();
     match args.command {
         Some(Command::Login { auth_code, .. }) => {
             assert_eq!(auth_code.as_deref(), Some("abc123"));
@@ -842,7 +842,7 @@ fn login_scriptable_flags_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "login",
         "--complete",
         "--google-access-tier",
@@ -863,7 +863,7 @@ fn login_scriptable_flags_parse() {
     }
 
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "login",
         "--provider",
         "google",
@@ -887,7 +887,7 @@ fn login_scriptable_flags_parse() {
 #[test]
 fn account_subcommands_parse() {
     let login =
-        Args::try_parse_from(["jcode", "account", "login", "--no-browser"]).expect("account login");
+        Args::try_parse_from(["kcode", "account", "login", "--no-browser"]).expect("account login");
     assert!(matches!(
         login.command,
         Some(Command::Account {
@@ -896,7 +896,7 @@ fn account_subcommands_parse() {
     ));
 
     let status =
-        Args::try_parse_from(["jcode", "account", "status", "--json"]).expect("account status");
+        Args::try_parse_from(["kcode", "account", "status", "--json"]).expect("account status");
     assert!(matches!(
         status.command,
         Some(Command::Account {
@@ -904,7 +904,7 @@ fn account_subcommands_parse() {
         })
     ));
 
-    let manage = Args::try_parse_from(["jcode", "account", "manage"]).expect("account manage");
+    let manage = Args::try_parse_from(["kcode", "account", "manage"]).expect("account manage");
     assert!(matches!(
         manage.command,
         Some(Command::Account {
@@ -912,7 +912,7 @@ fn account_subcommands_parse() {
         })
     ));
 
-    let logout = Args::try_parse_from(["jcode", "account", "logout"]).expect("account logout");
+    let logout = Args::try_parse_from(["kcode", "account", "logout"]).expect("account logout");
     assert!(matches!(
         logout.command,
         Some(Command::Account {
@@ -923,13 +923,13 @@ fn account_subcommands_parse() {
 
 #[test]
 fn quiet_global_flag_parses() {
-    let args = Args::try_parse_from(["jcode", "--quiet", "model", "list"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "--quiet", "model", "list"]).unwrap();
     assert!(args.quiet);
 }
 
 #[test]
 fn acp_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "acp"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "acp"]).unwrap();
     match args.command {
         Some(Command::Acp) => {}
         other => panic!("unexpected command: {:?}", other),
@@ -938,7 +938,7 @@ fn acp_subcommand_parses() {
 
 #[test]
 fn run_json_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "run", "--json", "hello"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "run", "--json", "hello"]).unwrap();
     match args.command {
         Some(Command::Run {
             json,
@@ -955,7 +955,7 @@ fn run_json_subcommand_parses() {
 
 #[test]
 fn run_ndjson_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "run", "--ndjson", "hello"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "run", "--ndjson", "hello"]).unwrap();
     match args.command {
         Some(Command::Run {
             json,
@@ -972,7 +972,7 @@ fn run_ndjson_subcommand_parses() {
 
 #[test]
 fn version_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "version", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "version", "--json"]).unwrap();
     match args.command {
         Some(Command::Version { json }) => assert!(json),
         other => panic!("unexpected command: {:?}", other),
@@ -981,7 +981,7 @@ fn version_subcommand_parses() {
 
 #[test]
 fn usage_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "usage", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "usage", "--json"]).unwrap();
     match args.command {
         Some(Command::Usage { json }) => assert!(json),
         other => panic!("unexpected command: {:?}", other),
@@ -990,7 +990,7 @@ fn usage_subcommand_parses() {
 
 #[test]
 fn auth_status_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "auth", "status", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "auth", "status", "--json"]).unwrap();
     match args.command {
         Some(Command::Auth(AuthCommand::Status { json })) => assert!(json),
         other => panic!("unexpected command: {:?}", other),
@@ -999,7 +999,7 @@ fn auth_status_subcommand_parses() {
 
 #[test]
 fn auth_doctor_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "auth", "doctor", "openai", "--validate", "--json"])
+    let args = Args::try_parse_from(["kcode", "auth", "doctor", "openai", "--validate", "--json"])
         .unwrap();
     match args.command {
         Some(Command::Auth(AuthCommand::Doctor {
@@ -1017,7 +1017,7 @@ fn auth_doctor_subcommand_parses() {
 
 #[test]
 fn provider_list_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "provider", "list", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "provider", "list", "--json"]).unwrap();
     match args.command {
         Some(Command::Provider(ProviderCommand::List { json })) => assert!(json),
         other => panic!("unexpected command: {:?}", other),
@@ -1026,7 +1026,7 @@ fn provider_list_subcommand_parses() {
 
 #[test]
 fn provider_current_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "provider", "current", "--json"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "provider", "current", "--json"]).unwrap();
     match args.command {
         Some(Command::Provider(ProviderCommand::Current { json })) => assert!(json),
         other => panic!("unexpected command: {:?}", other),
@@ -1036,7 +1036,7 @@ fn provider_current_subcommand_parses() {
 #[test]
 fn provider_add_subcommand_parses_agent_friendly_flags() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "provider",
         "add",
         "my-api",
@@ -1081,7 +1081,7 @@ fn provider_add_subcommand_parses_agent_friendly_flags() {
 
 #[test]
 fn restart_save_subcommand_parses() {
-    let args = Args::try_parse_from(["jcode", "restart", "save"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "restart", "save"]).unwrap();
     match args.command {
         Some(Command::Restart {
             action: RestartCommand::Save {
@@ -1094,7 +1094,7 @@ fn restart_save_subcommand_parses() {
 
 #[test]
 fn restart_save_auto_restore_flag_parses() {
-    let args = Args::try_parse_from(["jcode", "restart", "save", "--auto-restore"]).unwrap();
+    let args = Args::try_parse_from(["kcode", "restart", "save", "--auto-restore"]).unwrap();
     match args.command {
         Some(Command::Restart {
             action: RestartCommand::Save { auto_restore: true },
@@ -1104,28 +1104,28 @@ fn restart_save_auto_restore_flag_parses() {
 }
 
 /// Contract test for the onboarding agent-repair brief (see
-/// `jcode-tui::tui::app::onboarding_repair::build_repair_brief`). The brief
+/// `kcode-tui::tui::app::onboarding_repair::build_repair_brief`). The brief
 /// tells a coding agent to run these exact commands to diagnose and fix a
 /// failed login. If any flag here stops parsing, the brief would hand the agent
 /// a broken command, so this guards the agent-facing CLI contract.
 #[test]
 fn onboarding_repair_brief_commands_are_valid_cli() {
     // Diagnose.
-    Args::try_parse_from(["jcode", "auth-test", "--provider", "openai", "--json"])
+    Args::try_parse_from(["kcode", "auth-test", "--provider", "openai", "--json"])
         .expect("auth-test --provider --json must parse");
-    Args::try_parse_from(["jcode", "auth-test", "--all-configured", "--json"])
+    Args::try_parse_from(["kcode", "auth-test", "--all-configured", "--json"])
         .expect("auth-test --all-configured --json must parse");
-    Args::try_parse_from(["jcode", "auth", "doctor"]).expect("auth doctor must parse");
+    Args::try_parse_from(["kcode", "auth", "doctor"]).expect("auth doctor must parse");
 
     // Fix: OAuth and API-key logins.
-    Args::try_parse_from(["jcode", "login", "--provider", "openai"])
+    Args::try_parse_from(["kcode", "login", "--provider", "openai"])
         .expect("login --provider must parse");
-    Args::try_parse_from(["jcode", "login", "--provider", "openai", "--api-key", "k"])
+    Args::try_parse_from(["kcode", "login", "--provider", "openai", "--api-key", "k"])
         .expect("login --provider --api-key must parse");
 
     // Fix: custom OpenAI-compatible endpoint via provider add + key on stdin.
     Args::try_parse_from([
-        "jcode",
+        "kcode",
         "provider",
         "add",
         "my-endpoint",
@@ -1146,7 +1146,7 @@ fn onboarding_repair_brief_commands_are_valid_cli() {
 #[test]
 fn api_bridge_socket_flags_do_not_collide() {
     let args = Args::try_parse_from([
-        "jcode",
+        "kcode",
         "--socket",
         "/tmp/daemon.sock",
         "api-bridge",
@@ -1161,7 +1161,7 @@ fn api_bridge_socket_flags_do_not_collide() {
     ));
 
     // The bare form must resolve both paths from the environment.
-    let bare = Args::try_parse_from(["jcode", "api-bridge"]).expect("bare api-bridge should parse");
+    let bare = Args::try_parse_from(["kcode", "api-bridge"]).expect("bare api-bridge should parse");
     assert!(matches!(
         bare.command,
         Some(Command::ApiBridge {
@@ -1172,7 +1172,7 @@ fn api_bridge_socket_flags_do_not_collide() {
 
     // `--socket` after the subcommand must not be silently accepted as the
     // API socket, which is the exact confusion this test exists to prevent.
-    let ambiguous = Args::try_parse_from(["jcode", "api-bridge", "--socket", "/tmp/x.sock"]).ok();
+    let ambiguous = Args::try_parse_from(["kcode", "api-bridge", "--socket", "/tmp/x.sock"]).ok();
     assert!(
         matches!(
             ambiguous.map(|args| (args.socket, args.command)),
@@ -1193,7 +1193,7 @@ fn api_bridge_socket_flags_do_not_collide() {
 fn api_stdio_accepts_alias_and_daemon_socket_but_not_api_socket() {
     for command in ["api", "api-bridge"] {
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "--no-update",
             "--socket",
             "/isolated/daemon.sock",
@@ -1212,7 +1212,7 @@ fn api_stdio_accepts_alias_and_daemon_socket_but_not_api_socket() {
         ));
         assert!(
             Args::try_parse_from([
-                "jcode",
+                "kcode",
                 command,
                 "--stdio",
                 "--api-socket",

@@ -7,9 +7,9 @@ Reduce loaded-session revisit latency and idle/scroll frame work without retaini
 Commands:
 
 ```bash
-justrust test -p jcode-tui --lib benchmark_resume_op -- --ignored --nocapture
-justrust test -p jcode-tui --lib benchmark_resume_stable_frames -- --ignored --nocapture
-justrust test -p jcode-tui --lib performance_tests -- --include-ignored --nocapture
+justrust test -p kcode-tui --lib benchmark_resume_op -- --ignored --nocapture
+justrust test -p kcode-tui --lib benchmark_resume_stable_frames -- --ignored --nocapture
+justrust test -p kcode-tui --lib performance_tests -- --include-ignored --nocapture
 ```
 
 Existing operation baseline: `20261031-040039561-611884`.

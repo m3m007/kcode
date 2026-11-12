@@ -3,7 +3,7 @@
 When the shared server reloads, every open TUI reconnects at once and resumes
 its session. This records what each phase costs, what was fixed, and where the
 remaining time goes, measured from the live daemon log
-(`~/.jcode/logs/jcode-*.log`) after each deploy.
+(`~/.kcode/logs/kcode-*.log`) after each deploy.
 
 ## How to measure
 

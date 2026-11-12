@@ -1,4 +1,4 @@
-# Contributing to jcode
+# Contributing to kcode
 
 Thanks for contributing.
 
@@ -9,7 +9,7 @@ If you already use Nix, run `nix develop` from the repository root. The
 C/C++ compiler, CMake, Make, Perl, pkg-config, OpenSSL, Git, and ripgrep.
 On macOS it also supplies libclang through the bindgen hook for CoreAudio.
 It declares shells for x86_64 and aarch64 Linux and macOS. This is a development
-environment for the CLI repository, not Jcode Desktop or a Nix release package.
+environment for the CLI repository, not Kcode Desktop or a Nix release package.
 The existing non-Nix setup remains supported.
 
 Enable `nix-command` and `flakes` in your Nix configuration, or use:
@@ -42,7 +42,7 @@ nix develop --command justrust check
 
 Review and commit the resulting `flake.lock` change. Add new native build
 requirements to `flake.nix` when the project needs them. `flake check` evaluates
-the shells but does not compile Jcode or prove that every declared platform
+the shells but does not compile Kcode or prove that every declared platform
 works, so test on the platforms you are changing as well.
 
 ## Issues vs pull requests

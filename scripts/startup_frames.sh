@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Capture every distinct full-screen frame of a jcode TUI startup in tmux.
+# Capture every distinct full-screen frame of a kcode TUI startup in tmux.
 # Usage: startup_frames.sh <outdir> [command]
 # Set STARTUP_FRAMES_ENV="VAR=value ..." to run the client with extra env
 # (for example an isolated XDG_RUNTIME_DIR pointing at a test server).
 out=${1:?outdir}
-bin=${2:-jcode}
+bin=${2:-kcode}
 mkdir -p "$out"
 tmux kill-session -t ovs 2>/dev/null
 tmux new-session -d -s ovs -x 140 -y 40 -c "$PWD" "env ${STARTUP_FRAMES_ENV:-} $bin"

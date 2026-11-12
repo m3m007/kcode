@@ -154,14 +154,14 @@ pub async fn run_tui_client(
     if let Some(ref session_id) = resume_session {
         set_current_session(session_id);
     }
-    let native_ssh = std::env::var_os("JCODE_SSH_REMOTE").is_some();
+    let native_ssh = std::env::var_os("KCODE_SSH_REMOTE").is_some();
     if !native_ssh {
         spawn_session_signal_watchers();
     }
     super::companion_autostart::spawn_if_needed(native_ssh);
 
     if native_ssh {
-        let host = std::env::var("JCODE_SSH_REMOTE").unwrap_or_default();
+        let host = std::env::var("KCODE_SSH_REMOTE").unwrap_or_default();
         let label = resume_session.as_deref().unwrap_or("new session");
         crate::process_title::set_client_remote_display_title(
             &host,
@@ -170,7 +170,7 @@ pub async fn run_tui_client(
         );
         let _ = crossterm::execute!(
             std::io::stdout(),
-            crossterm::terminal::SetTitle(format!("jcode SSH {host} {label}"))
+            crossterm::terminal::SetTitle(format!("kcode SSH {host} {label}"))
         );
     } else if let Some(ref session_id) = resume_session {
         let session_name = id::extract_session_name(session_id)
@@ -194,7 +194,7 @@ pub async fn run_tui_client(
         );
     } else {
         crate::process_title::set_client_generic_title(super::selfdev::client_selfdev_requested());
-        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle("jcode"));
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle("kcode"));
     }
     startup_profile::mark("terminal_title");
 
@@ -261,7 +261,7 @@ pub async fn run_tui_client(
     }
 
     // A cloud handoff execs a fresh client that does not adopt the inherited
-    // terminal (no JCODE_RESUMING) and prints SSH progress first. Restore fully
+    // terminal (no KCODE_RESUMING) and prints SSH progress first. Restore fully
     // so it starts on a clean screen instead of drawing over the stale frame.
     tui_runtime.finish_for_run_result(&run_result, false);
 
@@ -281,7 +281,7 @@ pub async fn run_tui_client(
         print_session_resume_hint(session_id);
     }
     if !has_requested_action(&run_result) {
-        // The user quit (reload/update exec back into jcode in this pane and
+        // The user quit (reload/update exec back into kcode in this pane and
         // keep reporting, so they must not release it).
         crate::tui::herdr::release();
     }
@@ -368,7 +368,7 @@ pub async fn run_replay_command(
                         }
                     })
                     .collect::<String>();
-                std::path::PathBuf::from(format!("jcode_swarm_replay_{}_{}.mp4", safe_name, date))
+                std::path::PathBuf::from(format!("kcode_swarm_replay_{}_{}.mp4", safe_name, date))
             } else {
                 std::path::PathBuf::from(output)
             };
@@ -496,7 +496,7 @@ pub async fn run_replay_command(
                     }
                 })
                 .collect::<String>();
-            std::path::PathBuf::from(format!("jcode_replay_{}_{}.mp4", safe_name, date))
+            std::path::PathBuf::from(format!("kcode_replay_{}_{}.mp4", safe_name, date))
         } else {
             std::path::PathBuf::from(output)
         };
@@ -557,9 +557,9 @@ pub use crate::session_launch::{
 };
 
 fn resume_target_cloud_handoff(
-    target: &jcode_tui_session_picker::ResumeTarget,
+    target: &kcode_tui_session_picker::ResumeTarget,
 ) -> Option<tui::CloudHandoff> {
-    let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } = target else {
+    let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } = target else {
         return None;
     };
     let lease = crate::storage::read_session_lease(session_id)?;
@@ -571,7 +571,7 @@ fn resume_target_cloud_handoff(
 }
 
 fn cloud_resume_target_args(
-    target: &jcode_tui_session_picker::ResumeTarget,
+    target: &kcode_tui_session_picker::ResumeTarget,
 ) -> Option<Vec<String>> {
     let tui::CloudHandoff::RemoteResume {
         session_id,
@@ -582,7 +582,7 @@ fn cloud_resume_target_args(
         return None;
     };
     let mut args = vec!["--ssh".into(), host];
-    if let Ok(binary) = std::env::var("JCODE_CLOUD_REMOTE_BINARY") {
+    if let Ok(binary) = std::env::var("KCODE_CLOUD_REMOTE_BINARY") {
         args.extend(["--ssh-binary".into(), binary]);
     }
     if let Some(dir) = working_dir {
@@ -606,45 +606,45 @@ fn picker_resume_exe() -> Result<std::path::PathBuf> {
 pub fn list_sessions() -> Result<()> {
     fn build_resume_target_command(
         exe: &std::path::Path,
-        target: &jcode_tui_session_picker::ResumeTarget,
+        target: &kcode_tui_session_picker::ResumeTarget,
     ) -> (std::path::PathBuf, Vec<String>) {
         if let Some(args) = cloud_resume_target_args(target) {
             return (exe.to_path_buf(), args);
         }
         match target {
-            jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } => (
+            kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } => (
                 exe.to_path_buf(),
                 vec!["--resume".to_string(), session_id.clone()],
             ),
-            jcode_tui_session_picker::ResumeTarget::ClaudeCodeSession { session_id, .. } => (
+            kcode_tui_session_picker::ResumeTarget::ClaudeCodeSession { session_id, .. } => (
                 exe.to_path_buf(),
                 vec![
                     "--resume".to_string(),
                     crate::import::imported_claude_code_session_id(session_id),
                 ],
             ),
-            jcode_tui_session_picker::ResumeTarget::CodexSession { session_id, .. } => (
+            kcode_tui_session_picker::ResumeTarget::CodexSession { session_id, .. } => (
                 exe.to_path_buf(),
                 vec![
                     "--resume".to_string(),
                     crate::import::imported_codex_session_id(session_id),
                 ],
             ),
-            jcode_tui_session_picker::ResumeTarget::PiSession { session_path } => (
+            kcode_tui_session_picker::ResumeTarget::PiSession { session_path } => (
                 exe.to_path_buf(),
                 vec![
                     "--resume".to_string(),
                     crate::import::imported_pi_session_id(session_path),
                 ],
             ),
-            jcode_tui_session_picker::ResumeTarget::OpenCodeSession { session_id, .. } => (
+            kcode_tui_session_picker::ResumeTarget::OpenCodeSession { session_id, .. } => (
                 exe.to_path_buf(),
                 vec![
                     "--resume".to_string(),
                     crate::import::imported_opencode_session_id(session_id),
                 ],
             ),
-            jcode_tui_session_picker::ResumeTarget::CursorSession { session_id, .. } => (
+            kcode_tui_session_picker::ResumeTarget::CursorSession { session_id, .. } => (
                 exe.to_path_buf(),
                 vec![
                     "--resume".to_string(),
@@ -662,22 +662,22 @@ pub fn list_sessions() -> Result<()> {
     }
 
     fn spawn_target_in_new_terminal(
-        target: &jcode_tui_session_picker::ResumeTarget,
+        target: &kcode_tui_session_picker::ResumeTarget,
         exe: &std::path::Path,
         cwd: &std::path::Path,
     ) -> Result<bool> {
         let (program, args) = build_resume_target_command(exe, target);
         let title = match target {
-            jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } => {
+            kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } => {
                 resumed_window_title(session_id)
             }
-            jcode_tui_session_picker::ResumeTarget::ClaudeCodeSession { session_id, .. } => {
+            kcode_tui_session_picker::ResumeTarget::ClaudeCodeSession { session_id, .. } => {
                 format!("🧵 Claude Code {}", &session_id[..session_id.len().min(8)])
             }
-            jcode_tui_session_picker::ResumeTarget::CodexSession { session_id, .. } => {
+            kcode_tui_session_picker::ResumeTarget::CodexSession { session_id, .. } => {
                 format!("🧠 Codex {}", &session_id[..session_id.len().min(8)])
             }
-            jcode_tui_session_picker::ResumeTarget::PiSession { session_path } => {
+            kcode_tui_session_picker::ResumeTarget::PiSession { session_path } => {
                 format!(
                     "π Pi {}",
                     std::path::Path::new(session_path)
@@ -686,10 +686,10 @@ pub fn list_sessions() -> Result<()> {
                         .unwrap_or("session")
                 )
             }
-            jcode_tui_session_picker::ResumeTarget::OpenCodeSession { session_id, .. } => {
+            kcode_tui_session_picker::ResumeTarget::OpenCodeSession { session_id, .. } => {
                 format!("◌ OpenCode {}", &session_id[..session_id.len().min(8)])
             }
-            jcode_tui_session_picker::ResumeTarget::CursorSession { session_id, .. } => {
+            kcode_tui_session_picker::ResumeTarget::CursorSession { session_id, .. } => {
                 format!("▮ Cursor {}", &session_id[..session_id.len().min(8)])
             }
         };
@@ -698,16 +698,16 @@ pub fn list_sessions() -> Result<()> {
         let mut command = crate::terminal_launch::TerminalCommand::new(program, args).title(title);
         if remote {
             command = command
-                .spawn_env("JCODE_CLOUD_CONTINUE_MESSAGE", "")
-                .spawn_env("JCODE_CLOUD_HANDOFF_PREVIEW_SESSION", "");
+                .spawn_env("KCODE_CLOUD_CONTINUE_MESSAGE", "")
+                .spawn_env("KCODE_CLOUD_HANDOFF_PREVIEW_SESSION", "");
         }
         crate::terminal_launch::spawn_command_in_new_terminal(&command, cwd)
     }
 
     /// Apply `display.resume_open_elsewhere`. True when the session's existing
     /// window was brought here, so no new client should attach.
-    fn moved_existing_window(target: &jcode_tui_session_picker::ResumeTarget) -> bool {
-        let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } = target else {
+    fn moved_existing_window(target: &kcode_tui_session_picker::ResumeTarget) -> bool {
+        let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } = target else {
             return false;
         };
         crate::session_window::apply_resume_open_elsewhere(session_id)
@@ -720,7 +720,7 @@ pub fn list_sessions() -> Result<()> {
             if let Some(handoff) = resume_target_cloud_handoff(&resolved_target) {
                 return super::cloud_move::exec_handoff(handoff);
             }
-            let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
+            let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
                 &resolved_target
             else {
                 anyhow::bail!("Claude takeover did not produce a Jcode session");
@@ -755,7 +755,7 @@ pub fn list_sessions() -> Result<()> {
                     return super::cloud_move::exec_handoff(handoff);
                 }
                 let mut session_cwd = cwd.clone();
-                if let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
+                if let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
                     &resolved_target
                     && let Ok(sess) = session::Session::load(session_id)
                     && let Some(dir) = sess.working_dir.as_deref()
@@ -788,7 +788,7 @@ pub fn list_sessions() -> Result<()> {
                             }
                         };
                     let mut session_cwd = cwd.clone();
-                    if let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
+                    if let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
                         &resolved_target
                         && let Ok(sess) = session::Session::load(session_id)
                         && let Some(dir) = sess.working_dir.as_deref()
@@ -846,7 +846,7 @@ pub fn list_sessions() -> Result<()> {
                     }
                 };
                 let mut session_cwd = cwd.clone();
-                if let jcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
+                if let kcode_tui_session_picker::ResumeTarget::JcodeSession { session_id } =
                     &resolved_target
                     && let Ok(sess) = session::Session::load(session_id)
                     && let Some(dir) = sess.working_dir.as_deref()
@@ -924,7 +924,7 @@ pub fn list_sessions() -> Result<()> {
                             );
                             warned_no_terminal = true;
                         }
-                        eprintln!("  jcode --resume {}", session_id);
+                        eprintln!("  kcode --resume {}", session_id);
                     }
                     Err(e) => {
                         eprintln!("Failed to spawn session {}: {}", session_id, e);
@@ -966,15 +966,15 @@ mod cloud_resume_tests {
         impl Drop for RestoreHome {
             fn drop(&mut self) {
                 if let Some(value) = &self.0 {
-                    crate::env::set_var("JCODE_HOME", value);
+                    crate::env::set_var("KCODE_HOME", value);
                 } else {
-                    crate::env::remove_var("JCODE_HOME");
+                    crate::env::remove_var("KCODE_HOME");
                 }
             }
         }
-        let _restore = RestoreHome(std::env::var_os("JCODE_HOME"));
-        crate::env::set_var("JCODE_HOME", home.path());
-        let target = jcode_tui_session_picker::ResumeTarget::JcodeSession {
+        let _restore = RestoreHome(std::env::var_os("KCODE_HOME"));
+        crate::env::set_var("KCODE_HOME", home.path());
+        let target = kcode_tui_session_picker::ResumeTarget::JcodeSession {
             session_id: "cloud-picker-test".into(),
         };
         assert!(resume_target_cloud_handoff(&target).is_none());

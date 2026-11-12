@@ -61,9 +61,9 @@ fn cloud_sessions_args_match_jade_helper_contract() {
 #[test]
 fn cloud_sessions_config_persists_secret_and_feeds_helper_env_without_args() {
     let _guard = crate::storage::lock_test_env();
-    let _saved = SavedEnv::capture(&["JCODE_HOME", "JADE_TOKEN_FOR_TEST"]);
+    let _saved = SavedEnv::capture(&["KCODE_HOME", "JADE_TOKEN_FOR_TEST"]);
     let temp = tempfile::tempdir().expect("tempdir");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
     crate::env::set_var("JADE_TOKEN_FOR_TEST", "secret-token-value");
 
     run_cloud_sessions_configure(
@@ -151,9 +151,9 @@ fn collect_sync_candidates_picks_only_session_json() {
 #[test]
 fn cloud_sessions_sync_dry_run_reports_without_uploading_or_writing_state() {
     let _guard = crate::storage::lock_test_env();
-    let _saved = SavedEnv::capture(&["JCODE_HOME", "JCODE_JADE_SESSIONS_HELPER"]);
+    let _saved = SavedEnv::capture(&["KCODE_HOME", "KCODE_JADE_SESSIONS_HELPER"]);
     let temp = tempfile::tempdir().expect("tempdir");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     // A dummy helper that should never run during a dry run.
     let helper = temp.path().join("never_runs.sh");
@@ -163,7 +163,7 @@ fn cloud_sessions_sync_dry_run_reports_without_uploading_or_writing_state() {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
-    crate::env::set_var("JCODE_JADE_SESSIONS_HELPER", &helper);
+    crate::env::set_var("KCODE_JADE_SESSIONS_HELPER", &helper);
 
     let sessions_dir = temp.path().join("sessions");
     std::fs::create_dir_all(&sessions_dir).unwrap();
@@ -194,9 +194,9 @@ fn cloud_sessions_sync_dry_run_reports_without_uploading_or_writing_state() {
 #[test]
 fn cloud_sessions_sync_respects_min_interval_throttle() {
     let _guard = crate::storage::lock_test_env();
-    let _saved = SavedEnv::capture(&["JCODE_HOME", "JCODE_JADE_SESSIONS_HELPER"]);
+    let _saved = SavedEnv::capture(&["KCODE_HOME", "KCODE_JADE_SESSIONS_HELPER"]);
     let temp = tempfile::tempdir().expect("tempdir");
-    crate::env::set_var("JCODE_HOME", temp.path());
+    crate::env::set_var("KCODE_HOME", temp.path());
 
     // Helper that would fail loudly if it ever ran during a throttled run.
     let helper = temp.path().join("must_not_run.sh");
@@ -206,7 +206,7 @@ fn cloud_sessions_sync_respects_min_interval_throttle() {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
-    crate::env::set_var("JCODE_JADE_SESSIONS_HELPER", &helper);
+    crate::env::set_var("KCODE_JADE_SESSIONS_HELPER", &helper);
 
     let sessions_dir = temp.path().join("sessions");
     std::fs::create_dir_all(&sessions_dir).unwrap();
@@ -361,8 +361,8 @@ fn parse_cloud_session_list_json_rejects_unexpected_shapes() {
 
 #[test]
 fn resolve_jade_sessions_helper_prefers_explicit_and_env_paths() {
-    let _saved = SavedEnv::capture(&["JCODE_JADE_SESSIONS_HELPER"]);
-    crate::env::set_var("JCODE_JADE_SESSIONS_HELPER", "/tmp/from-env.py");
+    let _saved = SavedEnv::capture(&["KCODE_JADE_SESSIONS_HELPER"]);
+    crate::env::set_var("KCODE_JADE_SESSIONS_HELPER", "/tmp/from-env.py");
 
     assert_eq!(
         resolve_jade_sessions_helper(Some("/tmp/explicit.py")).unwrap(),

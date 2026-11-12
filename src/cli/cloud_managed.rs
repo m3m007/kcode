@@ -5,8 +5,8 @@
 //! account key. Its root disk is an encrypted EBS volume that survives sleep,
 //! so repos, sessions, and tools persist between connections.
 //!
-//! SSH reaches it through a private config (`~/.jcode/cloud/ssh_config`) whose
-//! `ProxyCommand` is `jcode cloud proxy`. Each SSH connection therefore asks the
+//! SSH reaches it through a private config (`~/.kcode/cloud/ssh_config`) whose
+//! `ProxyCommand` is `kcode cloud proxy`. Each SSH connection therefore asks the
 //! API to wake the machine (if needed) and authorize this client's key for one
 //! login, writes the host keys the control plane pinned at first boot, then
 //! relays the TCP stream. Nothing touches the user's own `~/.ssh`.
@@ -19,8 +19,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 /// Reserved host alias for the account's managed machine.
-pub(crate) const HOST: &str = "jcode-cloud";
-const DEFAULT_API_BASE: &str = "https://api.jcode.sh/v1";
+pub(crate) const HOST: &str = "kcode-cloud";
+const DEFAULT_API_BASE: &str = "https://api.kcode.sh/v1";
 const PROVISION_DEADLINE: Duration = Duration::from_secs(10 * 60);
 const POLL_INTERVAL: Duration = Duration::from_secs(4);
 
@@ -35,7 +35,7 @@ pub(crate) fn account_available() -> bool {
 }
 
 pub(super) fn dir() -> Result<PathBuf> {
-    Ok(crate::storage::jcode_dir()?.join("cloud"))
+    Ok(crate::storage::kcode_dir()?.join("cloud"))
 }
 
 fn key_path() -> Result<PathBuf> {
@@ -70,7 +70,7 @@ pub(crate) fn ssh_args() -> Result<Vec<String>> {
                 "-N",
                 "",
                 "-C",
-                "jcode-cloud-client",
+                "kcode-cloud-client",
                 "-f",
             ])
             .arg(&key)
@@ -84,7 +84,7 @@ pub(crate) fn ssh_args() -> Result<Vec<String>> {
             );
         }
     }
-    let exe = proxy_executable(std::env::current_exe().context("locate the jcode binary")?);
+    let exe = proxy_executable(std::env::current_exe().context("locate the kcode binary")?);
     let namespace = account()
         .ok()
         .and_then(|account| control_namespace(&account.key, &account.base));
@@ -97,7 +97,7 @@ pub(crate) fn ssh_args() -> Result<Vec<String>> {
 }
 
 /// Pick the binary SSH runs as `ProxyCommand`. A long-lived daemon whose
-/// binary was replaced by an update reports `/path/jcode (deleted)` (or a path
+/// binary was replaced by an update reports `/path/kcode (deleted)` (or a path
 /// that no longer exists). Writing that into the config would break every
 /// later cloud connection, so fall back to the stable launcher.
 pub(super) fn proxy_executable(exe: PathBuf) -> PathBuf {
@@ -110,7 +110,7 @@ pub(super) fn proxy_executable(exe: PathBuf) -> PathBuf {
     if trimmed.is_file() {
         return trimmed;
     }
-    let launcher = dirs::home_dir().map(|h| h.join(".local/bin/jcode"));
+    let launcher = dirs::home_dir().map(|h| h.join(".local/bin/kcode"));
     match launcher {
         Some(launcher) if launcher.is_file() => launcher,
         _ => trimmed,
@@ -160,7 +160,7 @@ fn managed_ssh_config(
         "  ControlMaster no\n  ControlPath none\n  ControlPersist no\n".to_string()
     };
     format!(
-        "# Managed by jcode. Rewritten on every use.\n\
+        "# Managed by kcode. Rewritten on every use.\n\
          Host {HOST}\n\
          \x20 HostName {HOST}\n\
          \x20 User ec2-user\n\
@@ -241,7 +241,7 @@ struct Account {
 fn account() -> Result<Account> {
     let key = crate::subscription_catalog::configured_api_key()
         .filter(|k| !k.trim().is_empty())
-        .context("Sign in to your Jcode account (`jcode login`) to use Jcode Cloud")?;
+        .context("Sign in to your Jcode account (`kcode login`) to use Jcode Cloud")?;
     let base = crate::subscription_catalog::configured_api_base()
         .filter(|b| b.starts_with("https://"))
         .unwrap_or_else(|| DEFAULT_API_BASE.into());
@@ -270,7 +270,7 @@ pub(super) fn request_json<T: serde::de::DeserializeOwned + Send>(
     off_runtime(move || {
         let client = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(40))
-            .user_agent(format!("jcode/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("kcode/{}", env!("CARGO_PKG_VERSION")))
             .build()?;
         let mut req = match method {
             "POST" => client.post(&url),
@@ -300,7 +300,7 @@ pub(super) fn request_json<T: serde::de::DeserializeOwned + Send>(
 
 fn describe_error(status: u16, code: &str, message: &str) -> String {
     match (status, code) {
-        (401, _) => "Your Jcode sign-in expired. Run `jcode login` again.".into(),
+        (401, _) => "Your Jcode sign-in expired. Run `kcode login` again.".into(),
         (402, "cloud_not_entitled") => {
             "Jcode Cloud requires an active paid Jcode subscription.".into()
         }
@@ -393,11 +393,11 @@ fn validated_host_keys(reply: &Reply) -> Result<Vec<String>> {
     Ok(keys)
 }
 
-/// `jcode cloud proxy`: SSH `ProxyCommand`. Authorizes this connection, pins
+/// `kcode cloud proxy`: SSH `ProxyCommand`. Authorizes this connection, pins
 /// host keys, then relays stdin/stdout to the machine's SSH port. Diagnostics
 /// go to stderr only, since stdout is the SSH wire.
 pub(crate) fn run_proxy() -> Result<()> {
-    let reply = connect(&mut |message| eprintln!("[jcode cloud] {message}"))?;
+    let reply = connect(&mut |message| eprintln!("[kcode cloud] {message}"))?;
     relay_proxy(&reply, HOST, &known_hosts_path()?)
 }
 
@@ -484,7 +484,7 @@ fn release_target(
                 || part.parse::<u64>().is_err()
         })
     {
-        bail!("JCODE_CLOUD_RELEASE must be an exact release tag such as v0.99.123 (got {value:?})");
+        bail!("KCODE_CLOUD_RELEASE must be an exact release tag such as v0.99.123 (got {value:?})");
     }
     Ok(Some(format!("v{version}")))
 }
@@ -502,16 +502,16 @@ pub(crate) fn prepare_script(home: &str) -> Result<String> {
 }
 
 pub(crate) fn prepare_script_with_candidate(home: &str, candidate: Option<&str>) -> Result<String> {
-    let override_tag = std::env::var("JCODE_CLOUD_RELEASE").ok();
+    let override_tag = std::env::var("KCODE_CLOUD_RELEASE").ok();
     let target = release_target(
-        jcode_build_meta::is_release_build(),
-        jcode_build_meta::semver(),
+        kcode_build_meta::is_release_build(),
+        kcode_build_meta::semver(),
         override_tag.as_deref(),
     )?;
     Ok(prepare_script_for_paths_with_candidate(
         home,
         target.as_deref(),
-        "/opt/jcode-cloud/jcode",
+        "/opt/kcode-cloud/kcode",
         true,
         candidate,
     ))
@@ -541,20 +541,20 @@ fn prepare_script_for_paths_with_candidate(
     let want = shell_quote(target.unwrap_or(""));
     let capability_schema = shell_quote(&format!(
         "handoff-capabilities-v1:{}:{}",
-        jcode_build_meta::VERSION,
-        jcode_build_meta::GIT_HASH,
+        kcode_build_meta::VERSION,
+        kcode_build_meta::GIT_HASH,
     ));
     format!(
         r#"set -eu
 want={want}
 development_candidate={development_candidate}
 export PATH="$HOME/.local/bin:$PATH"
-cli="$HOME/.local/bin/jcode"
+cli="$HOME/.local/bin/kcode"
 # Preserve the VM's CLI/service wrappers and their host-specific environment.
 # Both wrappers delegate to this stable backend, which also affects the next
 # natural daemon start without disrupting the current daemon or live sessions.
 backend={backend}
-root="$HOME/.local/share/jcode/cloud-releases"
+root="$HOME/.local/share/kcode/cloud-releases"
 mkdir -p "$HOME/.local/bin" "$root"
 stage_started=$(date +%s%N)
 stage_timing() {{
@@ -638,7 +638,7 @@ capability_cache="$root/.capabilities-ok"
 snapshot=$(capability_snapshot) || snapshot=
 warm=0
 now=$(date +%s)
-if [ -n "$snapshot" ] && [ -z "$development_candidate" ] && [ "${{JCODE_CLOUD_FORCE_UPGRADE:-}}" != 1 ] && [ -f "$capability_cache" ]; then
+if [ -n "$snapshot" ] && [ -z "$development_candidate" ] && [ "${{KCODE_CLOUD_FORCE_UPGRADE:-}}" != 1 ] && [ -f "$capability_cache" ]; then
   stamp=$(head -n 1 "$capability_cache")
   case "$stamp" in ''|*[!0-9]*) stamp=0 ;; esac
   # Longer than the local 120s handoff marker: every reuse verifies this
@@ -651,8 +651,8 @@ echo "[cloud prepare] capability cache warm=$warm" >&2
 stage_timing cache_verification
 probe() {{
   # Do not let a fast-release parent identity mask the candidate's real version.
-  env -u JCODE_RUNTIME_RELEASE_SEMVER -u JCODE_RUNTIME_RELEASE_GIT_HASH \
-    -u JCODE_RUNTIME_RELEASE_GIT_DATE -u JCODE_RUNTIME_RELEASE_GIT_TAG \
+  env -u KCODE_RUNTIME_RELEASE_SEMVER -u KCODE_RUNTIME_RELEASE_GIT_HASH \
+    -u KCODE_RUNTIME_RELEASE_GIT_DATE -u KCODE_RUNTIME_RELEASE_GIT_TAG \
     "$1" --no-update --no-selfdev "$2" "${{3:-}}" "${{4:-}}"
 }}
 capable() {{
@@ -665,8 +665,8 @@ capable() {{
     probe "$1" cloud group-protocol --help >/dev/null 2>&1
 }}
 version_output() {{
-  env -u JCODE_RUNTIME_RELEASE_SEMVER -u JCODE_RUNTIME_RELEASE_GIT_HASH \
-    -u JCODE_RUNTIME_RELEASE_GIT_DATE -u JCODE_RUNTIME_RELEASE_GIT_TAG \
+  env -u KCODE_RUNTIME_RELEASE_SEMVER -u KCODE_RUNTIME_RELEASE_GIT_HASH \
+    -u KCODE_RUNTIME_RELEASE_GIT_DATE -u KCODE_RUNTIME_RELEASE_GIT_TAG \
     "$1" --no-update --no-selfdev --version 2>/dev/null
 }}
 version_matches() {{
@@ -675,7 +675,7 @@ version_matches() {{
   [ -z "$development_candidate" ] || return 0
   version=$(version_output "$1") || return 1
   case "$version" in
-    "jcode $want"|"jcode $want "*|"$want"|"$want "*) return 0 ;;
+    "kcode $want"|"kcode $want "*|"$want"|"$want "*) return 0 ;;
     *) return 1 ;;
   esac
 }}
@@ -684,7 +684,7 @@ version_at_least() {{
   # A newer compatible stable release need not be downgraded. Compare decimal
   # components as strings to avoid floating-point/lexicographic version errors.
   printf '%s\n' "$version" | awk -v want="$want" '
-    NR == 1 {{ version = ($1 == "jcode" ? $2 : $1) }}
+    NR == 1 {{ version = ($1 == "kcode" ? $2 : $1) }}
     END {{
       if (NR != 1 || version !~ /^v[0-9]+\.[0-9]+\.[0-9]+$/) exit 1;
       sub(/^v/, "", version); sub(/^v/, "", want);
@@ -703,7 +703,7 @@ if [ -x "$managed_updater" ]; then
   # Never let a client preflight silently replace a dev/pinned runtime, even
   # when this client's release number is newer or a fallback upload was built.
   [ -z "$development_candidate" ] || {{
-    echo '[cloud prepare] this host has managed runtime policy; explicitly select a compatible package with jcode cloud runtime push --artifact PATH' >&2
+    echo '[cloud prepare] this host has managed runtime policy; explicitly select a compatible package with kcode cloud runtime push --artifact PATH' >&2
     exit 1
   }}
   if ! capable "$cli" || ! capable "$backend"; then
@@ -713,22 +713,22 @@ if [ -x "$managed_updater" ]; then
     }}
   fi
   capable "$cli" && capable "$backend" || {{
-    echo '[cloud prepare] selected cloud runtime lacks required handoff capabilities; use jcode cloud runtime push --artifact PATH or explicitly change its runtime policy' >&2
+    echo '[cloud prepare] selected cloud runtime lacks required handoff capabilities; use kcode cloud runtime push --artifact PATH or explicitly change its runtime policy' >&2
     exit 1
   }}
-elif ! capable "$cli" || ! capable "$backend" || {{ [ -n "$want" ] && {{ ! version_at_least "$cli" || ! version_at_least "$backend"; }}; }} || [ "${{JCODE_CLOUD_FORCE_UPGRADE:-}}" = 1 ]; then
+elif ! capable "$cli" || ! capable "$backend" || {{ [ -n "$want" ] && {{ ! version_at_least "$cli" || ! version_at_least "$backend"; }}; }} || [ "${{KCODE_CLOUD_FORCE_UPGRADE:-}}" = 1 ]; then
   # Cached evidence describes the old install, never the candidate.
   warm=0
   if [ -z "$want" ] && [ -z "$development_candidate" ]; then
     # Development builds have no corresponding published tag. Resolve the
     # canonical latest redirect, then pin and validate that exact release.
     latest=$(curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSLI --retry 3 \
-      -o /dev/null -w '%{{url_effective}}' https://github.com/1jehuang/jcode/releases/latest)
-    want=${{latest#https://github.com/1jehuang/jcode/releases/tag/}}
+      -o /dev/null -w '%{{url_effective}}' https://github.com/1jehuang/kcode/releases/latest)
+    want=${{latest#https://github.com/1jehuang/kcode/releases/tag/}}
     printf '%s\n' "$want" | LC_ALL=C awk '
       NR != 1 || $0 !~ /^v(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/ {{ bad=1 }}
       END {{ exit (bad || NR != 1) }}' || {{
-      echo '[cloud prepare] cannot resolve an exact published release; set JCODE_CLOUD_RELEASE to a compatible published tag' >&2
+      echo '[cloud prepare] cannot resolve an exact published release; set KCODE_CLOUD_RELEASE to a compatible published tag' >&2
       exit 1
     }}
   fi
@@ -739,23 +739,23 @@ elif ! capable "$cli" || ! capable "$backend" || {{ [ -n "$want" ] && {{ ! versi
   if [ -n "$development_candidate" ]; then
     echo '[cloud prepare] installing verified local development CLI (live sessions are unchanged)' >&2
     mkdir "$stage/bin"
-    cp "$development_candidate" "$stage/bin/jcode-linux-x86_64"
+    cp "$development_candidate" "$stage/bin/kcode-linux-x86_64"
     # A native development build can require a newer loader/libc than the
     # managed image. Its verified private bundle carries those dependencies.
     if [ -f "$development_candidate.bin" ]; then
-      cp "$development_candidate.bin" "$stage/bin/jcode-linux-x86_64.bin"
+      cp "$development_candidate.bin" "$stage/bin/kcode-linux-x86_64.bin"
       source_dir=$(dirname "$development_candidate")
       for library in "$source_dir"/lib*.so* "$source_dir"/ld-linux*.so*; do
         [ ! -f "$library" ] || cp "$library" "$stage/bin/"
       done
-      chmod 755 "$stage/bin/jcode-linux-x86_64.bin"
+      chmod 755 "$stage/bin/kcode-linux-x86_64.bin"
     fi
-    candidate="$stage/bin/jcode-linux-x86_64"
+    candidate="$stage/bin/kcode-linux-x86_64"
     chmod 755 "$candidate"
   else
   echo "[cloud prepare] installing verified $want CLI (live sessions are unchanged)" >&2
-  base="https://github.com/1jehuang/jcode/releases/download/$want"
-  asset=jcode-linux-x86_64.tar.gz
+  base="https://github.com/1jehuang/kcode/releases/download/$want"
+  asset=kcode-linux-x86_64.tar.gz
   curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$base/$asset" -o "$stage/$asset"
   curl --proto '=https' --tlsv1.2 -fsSL --retry 3 "$base/SHA256SUMS" -o "$stage/SHA256SUMS"
   # Accept exactly one checksum for exactly this asset, never arbitrary paths.
@@ -771,15 +771,15 @@ elif ! capable "$cli" || ! capable "$backend" || {{ [ -n "$want" ] && {{ ! versi
   # libraries. Reject directories, links, devices and unexpected/traversal names.
   tar tzf "$stage/$asset" > "$stage/members"
   awk '
-    $0 !~ /^(jcode-linux-x86_64(\.bin)?|lib(ssl|crypto)\.so[.0-9A-Za-z_-]*)$/ {{ exit 1 }}
+    $0 !~ /^(kcode-linux-x86_64(\.bin)?|lib(ssl|crypto)\.so[.0-9A-Za-z_-]*)$/ {{ exit 1 }}
     seen[$0]++ {{ exit 1 }}
-    END {{ if (!seen["jcode-linux-x86_64"] || !seen["jcode-linux-x86_64.bin"]) exit 1 }}
+    END {{ if (!seen["kcode-linux-x86_64"] || !seen["kcode-linux-x86_64.bin"]) exit 1 }}
   ' "$stage/members"
   tar tvzf "$stage/$asset" > "$stage/types"
   awk 'substr($0,1,1) != "-" {{ exit 1 }}' "$stage/types"
   mkdir "$stage/bin"
   tar xzf "$stage/$asset" --no-same-owner --no-same-permissions -C "$stage/bin"
-  candidate="$stage/bin/jcode-linux-x86_64"
+  candidate="$stage/bin/kcode-linux-x86_64"
   [ -f "$candidate" ] && [ -f "$candidate.bin" ]
   chmod 755 "$candidate" "$candidate.bin"
   fi
@@ -829,7 +829,7 @@ stage_timing final_verification
     )
 }
 
-/// Summary line for `jcode cloud machine`.
+/// Summary line for `kcode cloud machine`.
 pub(crate) fn describe(reply: &Reply) -> String {
     let mut text = format!("Jcode Cloud machine `{HOST}`: {}", reply.state);
     if let Some(usage) = &reply.usage
@@ -901,17 +901,17 @@ mod tests {
             }
         }
         let _restore = RestoreEnv(
-            ["JCODE_HOME", "JCODE_API_KEY", "JCODE_API_BASE"]
+            ["KCODE_HOME", "KCODE_API_KEY", "KCODE_API_BASE"]
                 .into_iter()
                 .map(|name| (name, std::env::var_os(name)))
                 .collect(),
         );
-        crate::env::set_var("JCODE_HOME", home.path());
-        crate::env::set_var("JCODE_API_KEY", "offline-test-account");
-        crate::env::set_var("JCODE_API_BASE", &base);
+        crate::env::set_var("KCODE_HOME", home.path());
+        crate::env::set_var("KCODE_API_KEY", "offline-test-account");
+        crate::env::set_var("KCODE_API_BASE", &base);
 
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "--no-update",
             "--no-selfdev",
             "cloud",
@@ -964,7 +964,7 @@ mod tests {
         assert!(
             std::fs::read_to_string(config)
                 .unwrap()
-                .contains("Host jcode-cloud")
+                .contains("Host kcode-cloud")
         );
         assert_eq!(std::fs::read(key_path().unwrap()).unwrap(), original_key);
         assert_eq!(
@@ -976,7 +976,7 @@ mod tests {
     #[test]
     fn proxy_executable_survives_replaced_binary() {
         let dir = tempfile::tempdir().unwrap();
-        let live = dir.path().join("jcode");
+        let live = dir.path().join("kcode");
         std::fs::write(&live, b"x").unwrap();
         assert_eq!(proxy_executable(live.clone()), live);
         // Updated in place: kernel reports "(deleted)" but the path has a new file.
@@ -1013,7 +1013,7 @@ mod tests {
         let script = prepare_script_for_paths(
             "/home/me",
             Some("v0.99.123"),
-            "/opt/jcode-cloud/jcode",
+            "/opt/kcode-cloud/kcode",
             true,
         );
         assert!(script.contains("want='v0.99.123'"));
@@ -1028,7 +1028,7 @@ mod tests {
             dir,
             &dir.join("id_ed25519"),
             &dir.join("known_hosts"),
-            std::path::Path::new("/opt/jcode"),
+            std::path::Path::new("/opt/kcode"),
             Some("0123456789abcdef"),
         );
         assert!(config.contains("  ControlMaster auto\n"));

@@ -2,14 +2,14 @@
 # Real CLI acceptance with isolated local/cloud homes and synthetic credentials.
 set -euo pipefail
 if [[ ${1:-} != --isolated ]]; then
-  BINARY=$(realpath -e "${JCODE_BIN:?set JCODE_BIN to the binary under test}")
+  BINARY=$(realpath -e "${KCODE_BIN:?set KCODE_BIN to the binary under test}")
   SCRIPT=$(realpath -e "$0")
-  W=$(mktemp -d "${JCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-environment-test.XXXXXX")
+  W=$(mktemp -d "${KCODE_SCRATCH_DIR:-${TMPDIR:-/tmp}}/cloud-environment-test.XXXXXX")
   mkdir -p "$W/home" "$W/runtime" "$W/tmp"
   exec env -i PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME="$W/home" \
-    TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" JCODE_RUNTIME_DIR="$W/runtime" \
-    JCODE_HOME="$W/home/.jcode" JCODE_NO_AUTO_UPDATE=1 JCODE_NO_TELEMETRY=1 \
-    JCODE_NON_INTERACTIVE=1 W="$W" JCODE_BIN="$BINARY" bash "$SCRIPT" --isolated
+    TMPDIR="$W/tmp" XDG_RUNTIME_DIR="$W/runtime" KCODE_RUNTIME_DIR="$W/runtime" \
+    KCODE_HOME="$W/home/.kcode" KCODE_NO_AUTO_UPDATE=1 KCODE_NO_TELEMETRY=1 \
+    KCODE_NON_INTERACTIVE=1 W="$W" KCODE_BIN="$BINARY" bash "$SCRIPT" --isolated
 fi
 trap 'echo "Acceptance artifacts: $W"' EXIT
 for prerequisite in bwrap python3 rg; do
@@ -24,23 +24,23 @@ printf 'opaque-credential-sentinel\n' > "$W/home/.config/gh/hosts.yml"
 export CLOUD_TEST_RESOURCE_TOKEN=opaque-token-sentinel
 {
   printf '#!/usr/bin/env bash\nset -euo pipefail\n'
-  printf 'W=%q\nBINARY=%q\n' "$W" "$JCODE_BIN"
+  printf 'W=%q\nBINARY=%q\n' "$W" "$KCODE_BIN"
   cat <<'TRANSPORT'
 # Only the final argument is the remote command. No payload appears in argv.
 exec bwrap --die-with-parent --ro-bind / / --tmpfs /tmp --unshare-pid --proc /proc --dev /dev \
   --bind "$W/cloud/projects" "$W/local" --bind "$W/cloud/home" "$W/home" \
-  --ro-bind "$BINARY" /tmp/jcode-env-test --clearenv \
+  --ro-bind "$BINARY" /tmp/kcode-env-test --clearenv \
   --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME "$W/home" \
-  --setenv JCODE_HOME "$W/home/.jcode" --setenv JCODE_NO_AUTO_UPDATE 1 \
-  --setenv JCODE_NO_TELEMETRY 1 --setenv JCODE_NON_INTERACTIVE 1 \
-  --setenv JCODE_RUNTIME_DIR "$W/home/runtime" --setenv XDG_RUNTIME_DIR "$W/home/runtime" \
+  --setenv KCODE_HOME "$W/home/.kcode" --setenv KCODE_NO_AUTO_UPDATE 1 \
+  --setenv KCODE_NO_TELEMETRY 1 --setenv KCODE_NON_INTERACTIVE 1 \
+  --setenv KCODE_RUNTIME_DIR "$W/home/runtime" --setenv XDG_RUNTIME_DIR "$W/home/runtime" \
   --chdir / bash -c "${!#}"
 TRANSPORT
 } > "$W/bin/ssh"
 chmod +x "$W/bin/ssh"
-export PATH="$W/bin:$PATH" JCODE_CLOUD_REMOTE_BINARY=/tmp/jcode-env-test
+export PATH="$W/bin:$PATH" KCODE_CLOUD_REMOTE_BINARY=/tmp/kcode-env-test
 cd "$REPO"
-run_env() { "$JCODE_BIN" --no-update --no-selfdev cloud env "$@"; }
+run_env() { "$KCODE_BIN" --no-update --no-selfdev cloud env "$@"; }
 assert_status() {
   python3 - "$1" "$2" <<'PY'
 import json, sys
@@ -62,7 +62,7 @@ cmp "$REPO/.env" "$CLOUD_REPO/.env"
 cmp "$W/home/.config/gh/hosts.yml" "$W/cloud/home/.config/gh/hosts.yml"
 [[ $(stat -c '%a' "$CLOUD_REPO/.env") == 600 ]]
 [[ $(stat -c '%a' "$W/cloud/home/.config/gh/hosts.yml") == 600 ]]
-python3 - "$W/cloud/home/.jcode/cloud-environment" <<'PY'
+python3 - "$W/cloud/home/.kcode/cloud-environment" <<'PY'
 import glob,json,sys,os
 files=glob.glob(sys.argv[1]+'/*.json')
 assert len(files)==1, files
@@ -76,21 +76,21 @@ push_request sync '{"action":"sync"}'
 [[ $(cat "$CLOUD_REPO/.env") == newer-cloud-file ]]
 [[ $(cat "$W/cloud/home/.config/gh/hosts.yml") == newer-cloud-credential ]]
 # A handoff callback requires matching, fresh local and receiving leases.
-mkdir -p "$JCODE_HOME/session_leases" "$W/cloud/home/.jcode/session_leases"
+mkdir -p "$KCODE_HOME/session_leases" "$W/cloud/home/.kcode/session_leases"
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf '{"session_id":"test-session","epoch":1,"away_host":"isolated-cloud","repo_root":"%s","updated_at":"%s"}\n' "$REPO" "$NOW" > "$JCODE_HOME/session_leases/test-session.json"
-printf '{"session_id":"test-session","epoch":1,"repo_root":"%s","updated_at":"%s"}\n' "$REPO" "$NOW" > "$W/cloud/home/.jcode/session_leases/test-session.json"
-export JCODE_CLOUD_ENV_SESSION=test-session JCODE_SSH_REMOTE=isolated-cloud
+printf '{"session_id":"test-session","epoch":1,"away_host":"isolated-cloud","repo_root":"%s","updated_at":"%s"}\n' "$REPO" "$NOW" > "$KCODE_HOME/session_leases/test-session.json"
+printf '{"session_id":"test-session","epoch":1,"repo_root":"%s","updated_at":"%s"}\n' "$REPO" "$NOW" > "$W/cloud/home/.kcode/session_leases/test-session.json"
+export KCODE_CLOUD_ENV_SESSION=test-session KCODE_SSH_REMOTE=isolated-cloud
 printf 'opaque-callback-sentinel\n' > "$REPO/.env.callback"
 printf '%s' '{"action":"fetch","resource":{"kind":"project_file","path":".env.callback"}}' | \
   run_env fulfill --session test-session > "$W/results/callback.json" 2> "$W/results/callback.err"
 assert_status "$W/results/callback.json" true
 cmp "$REPO/.env.callback" "$CLOUD_REPO/.env.callback"
-JCODE_CLOUD_ENV_SESSION=other run_env fulfill --session test-session <<< '{"action":"status"}' > "$W/results/wrong-session.json"
+KCODE_CLOUD_ENV_SESSION=other run_env fulfill --session test-session <<< '{"action":"status"}' > "$W/results/wrong-session.json"
 assert_status "$W/results/wrong-session.json" false
-JCODE_SSH_REMOTE=other run_env fulfill --session test-session <<< '{"action":"status"}' > "$W/results/wrong-host.json"
+KCODE_SSH_REMOTE=other run_env fulfill --session test-session <<< '{"action":"status"}' > "$W/results/wrong-host.json"
 assert_status "$W/results/wrong-host.json" false
-printf '{"session_id":"test-session","epoch":1,"away_host":"isolated-cloud","repo_root":"%s","updated_at":"2000-01-01T00:00:00Z"}\n' "$REPO" > "$JCODE_HOME/session_leases/test-session.json"
+printf '{"session_id":"test-session","epoch":1,"away_host":"isolated-cloud","repo_root":"%s","updated_at":"2000-01-01T00:00:00Z"}\n' "$REPO" > "$KCODE_HOME/session_leases/test-session.json"
 run_env fulfill --session test-session <<< '{"action":"status"}' > "$W/results/expired.json"
 assert_status "$W/results/expired.json" false
 # Restricted API rejects arbitrary files, executable environment controls and SSH keys.
@@ -103,7 +103,7 @@ for REQUEST in \
 done
 # Statuses and metadata must never contain synthetic secret bytes.
 if rg -l 'opaque-(environment|credential|token|callback)-sentinel' \
-  "$W/results" "$REPO/.jcode/cloud-environment.json" "$CLOUD_REPO/.jcode/cloud-environment.json"; then
+  "$W/results" "$REPO/.kcode/cloud-environment.json" "$CLOUD_REPO/.kcode/cloud-environment.json"; then
   echo 'FAIL: a secret appeared in status or metadata' >&2
   exit 1
 fi

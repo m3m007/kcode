@@ -9,10 +9,10 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-const HELPER: &str = "/opt/jcode-cloud/runtime-update";
-/// Must match `jcode-app-core`'s managed live reload capability marker. A
+const HELPER: &str = "/opt/kcode-cloud/runtime-update";
+/// Must match `kcode-app-core`'s managed live reload capability marker. A
 /// daemon binary containing it re-execs the managed selection on reload.
-const LIVE_RELOAD_MARKER: &str = "jcode-managed-cloud-live-reload-v1";
+const LIVE_RELOAD_MARKER: &str = "kcode-managed-cloud-live-reload-v1";
 const MAX_PACKAGE_BYTES: u64 = 256 * 1024 * 1024;
 
 /// All remote arguments are fixed verbs, validated release tags, or hex digests.
@@ -50,14 +50,14 @@ fn reload_command(wait_secs: u64, force: bool) -> String {
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 say() {{ echo "[cloud reload] $*" >&2; }}
 streaming() {{
-  activity=$(/opt/jcode-cloud/jcode --no-update --no-selfdev menubar --json 2>/dev/null) || return 1
+  activity=$(/opt/kcode-cloud/kcode --no-update --no-selfdev menubar --json 2>/dev/null) || return 1
   printf '%s' "$activity" | python3 -c 'import json,sys; n=json.load(sys.stdin).get("streaming"); sys.exit(1) if type(n) is not int or n < 0 else print(n)' 2>/dev/null
 }}
 deadline=$(( $(date +%s) + {wait_secs} ))
 last=""
 # A daemon with managed live reload keeps in-flight turns across the re-exec,
 # so it never needs to wait for idle. Only the restart fallback does.
-daemon=$(pgrep -u "$(id -u)" -f '/opt/jcode-cloud/.* serve( |$)' | head -n1)
+daemon=$(pgrep -u "$(id -u)" -f '/opt/kcode-cloud/.* serve( |$)' | head -n1)
 live_capable=0
 if [ -n "$daemon" ] && grep -qa {marker} "/proc/$daemon/exe" 2>/dev/null; then live_capable=1; fi
 wait_idle() {{
@@ -71,33 +71,33 @@ wait_idle() {{
   done
 }}
 if [ "$live_capable" = 0 ]; then wait_idle; fi
-before=$(readlink /opt/jcode-cloud/jcode)
+before=$(readlink /opt/kcode-cloud/kcode)
 pending=0
-sudo -n /usr/local/sbin/jcode-cloud-runtime status 2>/dev/null | grep -q '"pending": {{' && pending=1
+sudo -n /usr/local/sbin/kcode-cloud-runtime status 2>/dev/null | grep -q '"pending": {{' && pending=1
 # Live path: a daemon built with managed live reload re-execs the selected
 # runtime in place, so sessions, clients and in-flight turns survive the same
 # way a local self-dev reload does. Older daemons fall through to a restart.
 if [ "$live_capable" = 1 ]; then
   live_ok=1
   if [ "$pending" = 1 ]; then
-    sudo -n /usr/local/sbin/jcode-cloud-runtime activate-live >/dev/null || live_ok=0
+    sudo -n /usr/local/sbin/kcode-cloud-runtime activate-live >/dev/null || live_ok=0
   fi
   if [ "$live_ok" = 1 ]; then
-    target=$(readlink -f /opt/jcode-cloud/jcode)
+    target=$(readlink -f /opt/kcode-cloud/kcode)
     say "live reloading daemon (sessions stay attached)"
-    JCODE_SOCKET="$XDG_RUNTIME_DIR/jcode.sock" /opt/jcode-cloud/jcode --no-update --no-selfdev server reload --force --json >/dev/null 2>&1 || live_ok=0
-    if [ "$live_ok" = 1 ] && [ "$(readlink /proc/$daemon/exe 2>/dev/null)" = "$target" ] && [ -S "$XDG_RUNTIME_DIR/jcode.sock" ]; then
+    KCODE_SOCKET="$XDG_RUNTIME_DIR/kcode.sock" /opt/kcode-cloud/kcode --no-update --no-selfdev server reload --force --json >/dev/null 2>&1 || live_ok=0
+    if [ "$live_ok" = 1 ] && [ "$(readlink /proc/$daemon/exe 2>/dev/null)" = "$target" ] && [ -S "$XDG_RUNTIME_DIR/kcode.sock" ]; then
       [ "$pending" = 1 ] && say "activated new runtime"
-      say "daemon ready: $(/opt/jcode-cloud/jcode --version 2>/dev/null)"
+      say "daemon ready: $(/opt/kcode-cloud/kcode --version 2>/dev/null)"
       exit 0
     fi
   fi
   say "live reload did not land; falling back to a restart"
   if [ "$pending" = 1 ]; then
-    sudo -n /usr/local/sbin/jcode-cloud-runtime rollback-live >/dev/null 2>&1 && say "rolled back the live-activated runtime"
+    sudo -n /usr/local/sbin/kcode-cloud-runtime rollback-live >/dev/null 2>&1 && say "rolled back the live-activated runtime"
     pending=0
   fi
-  before=$(readlink /opt/jcode-cloud/jcode)
+  before=$(readlink /opt/kcode-cloud/kcode)
   # The restart fallback interrupts turns, so it still requires idle.
   wait_idle
 fi
@@ -105,33 +105,33 @@ say "restarting cloud daemon"
 # A daemon may have handed itself off outside systemd on an earlier stop. If it
 # keeps the socket, the unit start fails and the new runtime is falsely rolled
 # back. Turns are idle here (or --force), so stop every daemon first.
-systemctl --user stop jcode-cloud.service 2>/dev/null
-for p in $(pgrep -u "$(id -u)" -f '/opt/jcode-cloud/.* serve( |$)'); do say "stopping detached daemon pid $p"; kill -TERM "$p" 2>/dev/null; done
-for i in $(seq 1 20); do pgrep -u "$(id -u)" -f '/opt/jcode-cloud/.* serve( |$)' >/dev/null || break; sleep 1; done
-pkill -KILL -u "$(id -u)" -f '/opt/jcode-cloud/.* serve( |$)' 2>/dev/null
-rm -f "$XDG_RUNTIME_DIR/jcode.sock"
-systemctl --user reset-failed jcode-cloud.service 2>/dev/null
-systemctl --user start jcode-cloud.service || {{ say "start failed"; exit 1; }}
+systemctl --user stop kcode-cloud.service 2>/dev/null
+for p in $(pgrep -u "$(id -u)" -f '/opt/kcode-cloud/.* serve( |$)'); do say "stopping detached daemon pid $p"; kill -TERM "$p" 2>/dev/null; done
+for i in $(seq 1 20); do pgrep -u "$(id -u)" -f '/opt/kcode-cloud/.* serve( |$)' >/dev/null || break; sleep 1; done
+pkill -KILL -u "$(id -u)" -f '/opt/kcode-cloud/.* serve( |$)' 2>/dev/null
+rm -f "$XDG_RUNTIME_DIR/kcode.sock"
+systemctl --user reset-failed kcode-cloud.service 2>/dev/null
+systemctl --user start kcode-cloud.service || {{ say "start failed"; exit 1; }}
 for i in $(seq 1 60); do
-  pid=$(systemctl --user show jcode-cloud.service --property=MainPID --value)
-  if [ "${{pid:-0}}" != 0 ] && [ -S "$XDG_RUNTIME_DIR/jcode.sock" ]; then
+  pid=$(systemctl --user show kcode-cloud.service --property=MainPID --value)
+  if [ "${{pid:-0}}" != 0 ] && [ -S "$XDG_RUNTIME_DIR/kcode.sock" ]; then
     sleep 3
-    pid2=$(systemctl --user show jcode-cloud.service --property=MainPID --value)
+    pid2=$(systemctl --user show kcode-cloud.service --property=MainPID --value)
     if [ "$pid2" = "$pid" ]; then
-      after=$(readlink /opt/jcode-cloud/jcode)
+      after=$(readlink /opt/kcode-cloud/kcode)
       if [ "$pending" = 1 ] && [ "$after" = "$before" ]; then
-        say "new runtime failed to start and was rolled back; daemon is on: $(/opt/jcode-cloud/jcode --version 2>/dev/null)"
+        say "new runtime failed to start and was rolled back; daemon is on: $(/opt/kcode-cloud/kcode --version 2>/dev/null)"
         exit 1
       fi
       [ "$after" = "$before" ] || say "activated new runtime"
-      say "daemon ready: $(/opt/jcode-cloud/jcode --version 2>/dev/null)"
+      say "daemon ready: $(/opt/kcode-cloud/kcode --version 2>/dev/null)"
       exit 0
     fi
   fi
   sleep 1
 done
-say "daemon did not become ready; see: journalctl --user -u jcode-cloud.service"
-sudo -n /usr/local/sbin/jcode-cloud-runtime status >&2 || true
+say "daemon did not become ready; see: journalctl --user -u kcode-cloud.service"
+sudo -n /usr/local/sbin/kcode-cloud-runtime status >&2 || true
 exit 1
 "#
     )
@@ -160,7 +160,7 @@ fn reload(wait_secs: u64, force: bool) -> Result<()> {
     }
 }
 
-/// Build a portable Linux x86_64 package from the jcode checkout containing
+/// Build a portable Linux x86_64 package from the kcode checkout containing
 /// the current directory.
 fn build_from_source() -> Result<std::path::PathBuf> {
     let root = Command::new("git")
@@ -168,12 +168,12 @@ fn build_from_source() -> Result<std::path::PathBuf> {
         .output()
         .context("run git")?;
     if !root.status.success() {
-        bail!("--from-source must run inside a jcode checkout");
+        bail!("--from-source must run inside a kcode checkout");
     }
     let root = std::path::PathBuf::from(String::from_utf8_lossy(&root.stdout).trim());
     let script = root.join("scripts/package_cloud_runtime.sh");
     if !script.is_file() {
-        bail!("{} is not a jcode checkout", root.display());
+        bail!("{} is not a kcode checkout", root.display());
     }
     let target = "x86_64-unknown-linux-gnu";
     eprintln!(
@@ -192,9 +192,9 @@ fn build_from_source() -> Result<std::path::PathBuf> {
             "--profile",
             "selfdev",
             "-p",
-            "jcode",
+            "kcode",
             "--bin",
-            "jcode",
+            "kcode",
             "--target",
             &format!("{target}.2.17"),
             "--features",
@@ -209,8 +209,8 @@ fn build_from_source() -> Result<std::path::PathBuf> {
         .join("target")
         .join(target)
         .join("selfdev")
-        .join("jcode");
-    let output = root.join("target/cloud-runtime/jcode-linux-x86_64.tar.gz");
+        .join("kcode");
+    let output = root.join("target/cloud-runtime/kcode-linux-x86_64.tar.gz");
     eprintln!("[cloud build] packaging");
     let status = Command::new(&script)
         .arg(&binary)
@@ -248,7 +248,7 @@ fn package(path: &Path) -> Result<(File, String)> {
     file.read_exact(&mut magic)?;
     if magic != [0x1f, 0x8b] {
         bail!(
-            "expected a compatible jcode-linux-x86_64.tar.gz package, not a raw local executable"
+            "expected a compatible kcode-linux-x86_64.tar.gz package, not a raw local executable"
         );
     }
     file.rewind()?;
@@ -321,7 +321,7 @@ pub(crate) fn run_cli(action: CloudRuntimeCommand) -> Result<()> {
                 reload(wait_secs, false)
             } else {
                 eprintln!(
-                    "Active daemons are not restarted. Run `jcode cloud runtime reload` to switch."
+                    "Active daemons are not restarted. Run `kcode cloud runtime reload` to switch."
                 );
                 Ok(())
             }
@@ -403,7 +403,7 @@ mod tests {
             (r#"{"streaming":"0"}"#, 0, false),
         ] {
             let mock = r#"sh -c 'printf %s "$MOCK_ACTIVITY"; exit $MOCK_STATUS' --"#;
-            let script = gate.replace("/opt/jcode-cloud/jcode", mock) + "printf verified_idle";
+            let script = gate.replace("/opt/kcode-cloud/kcode", mock) + "printf verified_idle";
             let result = Command::new("sh")
                 .args(["-c", &script])
                 .env("MOCK_ACTIVITY", json)

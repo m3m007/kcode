@@ -2,7 +2,7 @@
 
 ## Design
 
-An open terminal is not evidence of active work. Jcode should release reloadable
+An open terminal is not evidence of active work. Kcode should release reloadable
 memory after a sustained idle period without closing the terminal, losing the
 input draft, or interrupting a tool, agent turn, or scheduled wake.
 
@@ -18,7 +18,7 @@ hibernation_idle_secs = 1800
 ```
 
 The default is 30 minutes. Set the value to `0` to disable idle hibernation.
-`JCODE_HIBERNATION_IDLE_SECS` overrides the file value. Existing configuration
+`KCODE_HIBERNATION_IDLE_SECS` overrides the file value. Existing configuration
 files without a `[session]` table inherit the default.
 
 ### Terminal behavior

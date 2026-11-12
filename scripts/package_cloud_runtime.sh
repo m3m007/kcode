@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Package an explicitly built portable runtime for `jcode cloud runtime push`.
+# Package an explicitly built portable runtime for `kcode cloud runtime push`.
 # Never builds, uploads source, or changes a running cloud daemon.
 set -euo pipefail
 if [[ $# != 2 ]]; then
   echo 'usage: scripts/package_cloud_runtime.sh <portable-linux-x86_64-binary> <output.tar.gz>' >&2
-  echo 'build: justrust zigbuild --remote --profile selfdev -p jcode --bin jcode --target x86_64-unknown-linux-gnu.2.17 --features linux-compat-vendored-openssl' >&2
+  echo 'build: justrust zigbuild --remote --profile selfdev -p kcode --bin kcode --target x86_64-unknown-linux-gnu.2.17 --features linux-compat-vendored-openssl' >&2
   exit 2
 fi
 binary=$1
@@ -37,9 +37,9 @@ LC_ALL=C readelf --version-info "$binary" | awk '
 mkdir -p -- "$(dirname -- "$output")"
 stage=$(mktemp -d "$(dirname -- "$output")/.cloud-package.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
-cp -- "$binary" "$stage/jcode-linux-x86_64"
-chmod 755 "$stage/jcode-linux-x86_64"
-tar czf "$stage/runtime.tar.gz" -C "$stage" jcode-linux-x86_64
+cp -- "$binary" "$stage/kcode-linux-x86_64"
+chmod 755 "$stage/kcode-linux-x86_64"
+tar czf "$stage/runtime.tar.gz" -C "$stage" kcode-linux-x86_64
 mv -- "$stage/runtime.tar.gz" "$output"
 sha256sum -- "$output"
-printf 'Packaged only. Push explicitly with: jcode cloud runtime push --artifact %q\n' "$output"
+printf 'Packaged only. Push explicitly with: kcode cloud runtime push --artifact %q\n' "$output"

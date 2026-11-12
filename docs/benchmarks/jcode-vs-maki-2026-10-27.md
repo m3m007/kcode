@@ -1,6 +1,6 @@
-# Jcode vs Maki: local TUI performance and resources
+# Kcode vs Maki: local TUI performance and resources
 
-> Follow-up: the same Jcode binary later measured 128 to 130 MiB for one session, not the original 219 MiB. See “Follow-up: one-session memory attribution” below before treating the original figures as a stable baseline.
+> Follow-up: the same Kcode binary later measured 128 to 130 MiB for one session, not the original 219 MiB. See “Follow-up: one-session memory attribution” below before treating the original figures as a stable baseline.
 
 Measured October 27, 2026 UTC, on the user's Dell XPS 14, Intel Core Ultra X9 388H, 62.3 GiB RAM. Linux x86_64, kernel 7.2.11-arch1-1, 16 logical CPUs. Initial load averages: 2.63 / 3.18 / 3.82. This was an active development laptop, not a dedicated benchmark machine.
 
@@ -8,17 +8,17 @@ Measured October 27, 2026 UTC, on the user's Dell XPS 14, Intel Core Ultra X9 38
 
 **This measures local TUI overhead, not coding quality, model latency, token efficiency, or tool throughput.** No prompts were submitted and no valid model credentials were supplied. Different selected model names therefore do not contribute inference work to these measurements.
 
-- Maki has a substantially smaller one-session footprint: **67.9 MiB vs Jcode's 218.8 MiB PSS**, including Jcode's server.
-- Jcode scales more economically across these idle sessions. At ten sessions it uses **327.0 MiB vs Maki's 394.9 MiB PSS**, about 17% less. The measured PSS crossover lies somewhere between five and ten sessions, not at an established exact threshold.
-- First-session editable startup was **71 ms Jcode vs 138 ms Maki** in the three one-session repetitions. Both were responsive to typing, with typical echo times of a few milliseconds.
-- **Do not interpret Maki's animated welcome-screen CPU as steady-state chat CPU.** Disabling its splash animation reduced measured CPU substantially. The resulting CPU figures are much closer to Jcode's, and Jcode's ten-session samples were noisy.
-- This compares an installed **Jcode development binary** to a **Maki release binary**. It is not an optimized-release-versus-optimized-release comparison.
+- Maki has a substantially smaller one-session footprint: **67.9 MiB vs Kcode's 218.8 MiB PSS**, including Kcode's server.
+- Kcode scales more economically across these idle sessions. At ten sessions it uses **327.0 MiB vs Maki's 394.9 MiB PSS**, about 17% less. The measured PSS crossover lies somewhere between five and ten sessions, not at an established exact threshold.
+- First-session editable startup was **71 ms Kcode vs 138 ms Maki** in the three one-session repetitions. Both were responsive to typing, with typical echo times of a few milliseconds.
+- **Do not interpret Maki's animated welcome-screen CPU as steady-state chat CPU.** Disabling its splash animation reduced measured CPU substantially. The resulting CPU figures are much closer to Kcode's, and Kcode's ten-session samples were noisy.
+- This compares an installed **Kcode development binary** to a **Maki release binary**. It is not an optimized-release-versus-optimized-release comparison.
 
 ## Binaries
 
-Executables were resolved once before each suite. Every recorded running process executable matched the corresponding pinned binary, including Jcode's dedicated server.
+Executables were resolved once before each suite. Every recorded running process executable matched the corresponding pinned binary, including Kcode's dedicated server.
 
-| | Jcode | Maki |
+| | Kcode | Maki |
 |---|---|---|
 | Version | v0.99.252-dev, commit `8e1417e79` | 0.6.5 |
 | File size | 325,992,785 bytes, 310.9 MiB | 116,670,208 bytes, 111.3 MiB |
@@ -37,11 +37,11 @@ Each run uses:
 - A 120-column by 40-row pseudoterminal per client, with kernel input echo disabled. Terminal capability requests are answered.
 - Actual rendered chat-prompt detection followed by application-rendered input echo. Initial status text alone does not qualify as input-ready.
 - Two seconds of settling after all clients launch, then approximately five seconds of idle observation. Process accounting extends the actual interval to roughly 5.5 to 6.3 seconds.
-- `/proc` PSS, RSS, private memory, and CPU accounting for the complete measured process tree. Jcode totals include one dedicated server plus all clients. Maki totals include all independent instances.
+- `/proc` PSS, RSS, private memory, and CPU accounting for the complete measured process tree. Kcode totals include one dedicated server plus all clients. Maki totals include all independent instances.
 - Twenty additional short input strings per run, spread round-robin across the terminals. No Enter key is sent.
 - Owned process groups terminated after measurement. The user's active daemon is not reused or restarted.
 
-Jcode: `--no-update --no-selfdev`, memory disabled through `JCODE_MEMORY_ENABLED=0`, isolated socket, and returning-user markers to skip onboarding. Maki: `--no-plugins --no-commands`, keeping builtin plugins. The splash-disabled control replaces `--no-plugins` with an isolated global `init.lua` containing only:
+Kcode: `--no-update --no-selfdev`, memory disabled through `KCODE_MEMORY_ENABLED=0`, isolated socket, and returning-user markers to skip onboarding. Maki: `--no-plugins --no-commands`, keeping builtin plugins. The splash-disabled control replaces `--no-plugins` with an isolated global `init.lua` containing only:
 
 ```lua
 maki.setup({ ui = { splash_animation = false } })
@@ -53,29 +53,29 @@ All other user plugins remain absent because the control uses a fresh HOME. The 
 
 Values are medians of three run-level observations. Memory observations within each run are themselves medians of samples taken during the idle window. CPU percentages are relative to **one logical core**, not the entire 16-CPU machine.
 
-| Sessions | Jcode PSS MiB | Maki PSS MiB | Jcode private MiB | Maki private MiB | Jcode processes | Maki processes |
+| Sessions | Kcode PSS MiB | Maki PSS MiB | Kcode private MiB | Maki private MiB | Kcode processes | Maki processes |
 |---:|---:|---:|---:|---:|---:|---:|
 | 1 | 218.8 | 67.9 | 137.4 | 67.9 | 2 | 1 |
 | 5 | 271.5 | 211.0 | 156.3 | 178.5 | 6 | 5 |
 | 10 | 327.0 | 394.9 | 211.3 | 362.5 | 11 | 10 |
 
-PSS ranges across repetitions: Jcode 216.6 to 219.4 / 267.0 to 273.1 / 324.5 to 327.6 MiB. Maki 67.6 to 69.5 / 204.9 to 215.3 / 387.9 to 395.0 MiB, for 1 / 5 / 10 sessions respectively.
+PSS ranges across repetitions: Kcode 216.6 to 219.4 / 267.0 to 273.1 / 324.5 to 327.6 MiB. Maki 67.6 to 69.5 / 204.9 to 215.3 / 387.9 to 395.0 MiB, for 1 / 5 / 10 sessions respectively.
 
-Summed RSS medians were Jcode 308.7 / 804.5 / 1414.9 MiB and Maki 67.9 / 340.8 / 686.9 MiB. **Summed RSS double-counts shared resident pages**, so it is not the preferred total-physical-memory metric for multiple processes. PSS apportions shared pages, while private memory excludes shared pages entirely. PSS can also vary with unrelated processes mapping the same executable on this active laptop.
+Summed RSS medians were Kcode 308.7 / 804.5 / 1414.9 MiB and Maki 67.9 / 340.8 / 686.9 MiB. **Summed RSS double-counts shared resident pages**, so it is not the preferred total-physical-memory metric for multiple processes. PSS apportions shared pages, while private memory excludes shared pages entirely. PSS can also vary with unrelated processes mapping the same executable on this active laptop.
 
-| Sessions | Jcode idle CPU % | Maki animated welcome CPU % | Jcode input echo ms | Maki input echo ms |
+| Sessions | Kcode idle CPU % | Maki animated welcome CPU % | Kcode input echo ms | Maki input echo ms |
 |---:|---:|---:|---:|---:|
 | 1 | 0.53 | 3.63 | 3.41 | 4.71 |
 | 5 | 2.18 | 15.61 | 3.61 | 3.60 |
 | 10 | 7.55 | 34.51 | 4.03 | 3.64 |
 
-Jcode emitted zero terminal bytes throughout every main idle measurement. Maki's animated welcome emitted a median 52 / 116 / 239 KiB/s across 1 / 5 / 10 terminals. This is terminal output volume, **not network traffic**. The harness parses that output in a separate process, whose CPU is not charged to either tool. That parser activity can still affect scheduling on the host.
+Kcode emitted zero terminal bytes throughout every main idle measurement. Maki's animated welcome emitted a median 52 / 116 / 239 KiB/s across 1 / 5 / 10 terminals. This is terminal output volume, **not network traffic**. The harness parses that output in a separate process, whose CPU is not charged to either tool. That parser activity can still affect scheduling on the host.
 
 ### Startup
 
-Fresh-process startup uses warm filesystem caches. This is not a reboot-cold or dropped-page-cache test. Jcode's first-session total includes server startup, with socket-connectability polled at 2 ms intervals. A connectable socket alone is not sufficient: the client must then render a prompt and echo the probe.
+Fresh-process startup uses warm filesystem caches. This is not a reboot-cold or dropped-page-cache test. Kcode's first-session total includes server startup, with socket-connectability polled at 2 ms intervals. A connectable socket alone is not sufficient: the client must then render a prompt and echo the probe.
 
-| Metric | Jcode | Maki |
+| Metric | Kcode | Maki |
 |---|---:|---:|
 | First editable session, one-session runs, median | 71.2 ms | 138.4 ms |
 | Same, observed range | 69.6 to 103.8 ms | 106.4 to 233.0 ms |
@@ -95,32 +95,32 @@ Startup and input-echo measurements include Python subprocess/terminal-parsing o
 
 Maki emitted no idle output in eight control runs and 140 bytes total in one five-session run. The animation-off result strongly suggests the welcome animation explains most of the main suite's extra Maki CPU and terminal output. Memory conclusions are essentially unchanged.
 
-Jcode's CPU ranges were 0.18 to 0.72% / 2.08 to 2.38% / **4.39 to 17.85%** at 1 / 5 / 10 sessions. That broad final range and the short observation windows prevent a strong steady-state CPU ranking. The control was also a later suite, not interleaved with Jcode.
+Kcode's CPU ranges were 0.18 to 0.72% / 2.08 to 2.38% / **4.39 to 17.85%** at 1 / 5 / 10 sessions. That broad final range and the short observation windows prevent a strong steady-state CPU ranking. The control was also a later suite, not interleaved with Kcode.
 
 ## Reproduction and artifacts
 
-Harness: `scripts/bench_jcode_maki.py`. Tests: `scripts/test_bench_jcode_maki.py`.
+Harness: `scripts/bench_kcode_maki.py`. Tests: `scripts/test_bench_kcode_maki.py`.
 
 The full raw JSON, including startup samples, typing samples, screen evidence, paths, hashes, and executable checks, is retained locally at:
 
 ```text
-/home/jeremy/.jcode/scratch/maki-bench/results.json
-/home/jeremy/.jcode/scratch/maki-bench/no-splash.json
+/home/jeremy/.kcode/scratch/maki-bench/results.json
+/home/jeremy/.kcode/scratch/maki-bench/no-splash.json
 ```
 
 Reproduce on Linux with Python 3.11+ and `pyte` installed in an isolated environment:
 
 ```bash
-python scripts/bench_jcode_maki.py \
-  --jcode /path/to/pinned/jcode --maki /path/to/pinned/maki \
+python scripts/bench_kcode_maki.py \
+  --kcode /path/to/pinned/kcode --maki /path/to/pinned/maki \
   --runs 3 --sessions 1 5 10 --idle-seconds 5 --output results.json
 
-python scripts/bench_jcode_maki.py \
-  --jcode /path/to/pinned/jcode --maki /path/to/pinned/maki \
+python scripts/bench_kcode_maki.py \
+  --kcode /path/to/pinned/kcode --maki /path/to/pinned/maki \
   --tools maki --maki-no-splash \
   --runs 3 --sessions 1 5 10 --idle-seconds 5 --output no-splash.json
 
-python -m unittest discover -s scripts -p test_bench_jcode_maki.py -v
+python -m unittest discover -s scripts -p test_bench_kcode_maki.py -v
 ```
 
 Validation: all **27 runs completed**, every recorded executable matched its pinned path, and all **five harness tests passed**. Tests cover live/missing process accounting, application input echo, rejection of unrendered input as readiness, and owned-process cleanup.
@@ -133,7 +133,7 @@ The mapping-level diagnostic run measured approximately **130.5 MiB PSS** in tot
 
 | Resident component, summed server + client | PSS MiB |
 |---|---:|
-| Jcode executable mappings, including relocated data | 112.85 |
+| Kcode executable mappings, including relocated data | 112.85 |
 | Anonymous allocator/mmap/thread mappings | 7.88 |
 | `brk` heap | 3.48 |
 | Main-thread stacks | 4.87 |
@@ -143,29 +143,29 @@ The executable figure includes about **10.96 MiB of anonymous relocated data**, 
 
 This points to the following causes of the measured remaining gap:
 
-1. **The comparison used the unoptimized self-development build.** At the benchmarked revision, `[profile.selfdev]` inherits release settings but sets `opt-level = 0`. ELF inspection shows approximately **122.6 MiB of `.text` machine code**, versus **42.0 MiB** in Maki's binary. The Jcode executable links the full server, TUI, providers, tools, rendering, and their generic/serialization machinery. The footprint is predominantly mapped executable code/data, not a 130 MiB transcript or embedding heap.
+1. **The comparison used the unoptimized self-development build.** At the benchmarked revision, `[profile.selfdev]` inherits release settings but sets `opt-level = 0`. ELF inspection shows approximately **122.6 MiB of `.text` machine code**, versus **42.0 MiB** in Maki's binary. The Kcode executable links the full server, TUI, providers, tools, rendering, and their generic/serialization machinery. The footprint is predominantly mapped executable code/data, not a 130 MiB transcript or embedding heap.
 2. **One session means two processes.** The server and TUI have separate allocator/runtime state and private relocated executable data. In one diagnostic snapshot their PSS shares were roughly **69 MiB server + 62 MiB client**. Shared clean pages are already proportionally apportioned by PSS, so this does **not** mean charging the full executable twice. Different server/client code paths also touch different parts of the executable.
 3. **This is not an embedding-model allocation.** Memory features were disabled, the workspace was empty, and no prompts were submitted. The observed non-executable mappings are much smaller than the executable mappings.
 
-A contemporaneous Maki splash-disabled run measured about **65.7 MiB PSS**, with approximately **34 MiB executable mappings** and roughly **31 to 34 MiB anonymous mappings** during observation. Therefore the live heap is not demonstrated to be worse in Jcode by this investigation. The major demonstrated difference is the development executable's resident code/data and its two-process startup baseline.
+A contemporaneous Maki splash-disabled run measured about **65.7 MiB PSS**, with approximately **34 MiB executable mappings** and roughly **31 to 34 MiB anonymous mappings** during observation. Therefore the live heap is not demonstrated to be worse in Kcode by this investigation. The major demonstrated difference is the development executable's resident code/data and its two-process startup baseline.
 
-The first meaningful optimization experiment would compare a **proper optimized Jcode distribution build of the same revision**, rather than merely stripping symbols. The large ELF symbol tables are not in loadable segments, so file-size reduction from stripping alone is not evidence of a runtime-memory improvement. A smaller client-only executable and less eager client initialization are possible further experiments, not yet measured fixes. No runtime code or allocator settings were changed in this follow-up.
+The first meaningful optimization experiment would compare a **proper optimized Kcode distribution build of the same revision**, rather than merely stripping symbols. The large ELF symbol tables are not in loadable segments, so file-size reduction from stripping alone is not evidence of a runtime-memory improvement. A smaller client-only executable and less eager client initialization are possible further experiments, not yet measured fixes. No runtime code or allocator settings were changed in this follow-up.
 
 Follow-up scripts and raw measurements are retained locally under:
 
 ```text
-/home/jeremy/.jcode/scratch/maki-bench/attribute.py
-/home/jeremy/.jcode/scratch/maki-bench/attribution/jcode.json
-/home/jeremy/.jcode/scratch/maki-bench/attribution/jcode-prewarmed.json
-/home/jeremy/.jcode/scratch/maki-bench/attribution/maki.json
-/home/jeremy/.jcode/scratch/maki-bench/attribution/repeat-original.json
+/home/jeremy/.kcode/scratch/maki-bench/attribute.py
+/home/jeremy/.kcode/scratch/maki-bench/attribution/kcode.json
+/home/jeremy/.kcode/scratch/maki-bench/attribution/kcode-prewarmed.json
+/home/jeremy/.kcode/scratch/maki-bench/attribution/maki.json
+/home/jeremy/.kcode/scratch/maki-bench/attribution/repeat-original.json
 ```
 
 ## Limitations and next useful measurements
 
 - No model requests, real coding tasks, repository indexing workloads, tool execution throughput, or long-chat memory growth were measured.
 - No headless/swarm-worker comparison was performed. Multiple idle TUI sessions are not equivalent to active swarm workers.
-- Fresh minimal configurations are not necessarily either tool's typical configured installation. Jcode memory was explicitly disabled.
+- Fresh minimal configurations are not necessarily either tool's typical configured installation. Kcode memory was explicitly disabled.
 - The active laptop had other development activity, no CPU pinning, and no frequency or thermal control. Three repetitions are descriptive rather than statistically conclusive.
 - Peak startup memory, energy consumption, network transfer, context/token efficiency, and task success rate are not covered.
 - A stronger task benchmark would use matched model/provider settings, identical repository snapshots and prompts, and repeated successful tasks, reporting model latency and token usage separately from local overhead.

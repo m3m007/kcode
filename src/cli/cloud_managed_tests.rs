@@ -54,11 +54,11 @@ mod shell {
         format!(
             r#"#!/bin/sh
 set -eu
-[ -z "${{JCODE_RUNTIME_RELEASE_SEMVER:-}}" ] || exit 97
+[ -z "${{KCODE_RUNTIME_RELEASE_SEMVER:-}}" ] || exit 97
 printf '%s\n' "$*" >> "$HOME/probes"
-if [ {fail_after_switch} = true ] && [ "$0" = "$HOME/opt/jcode" ]; then exit 96; fi
+if [ {fail_after_switch} = true ] && [ "$0" = "$HOME/opt/kcode" ]; then exit 96; fi
 case "$*" in
-  '--no-update --no-selfdev --version') echo 'jcode {version} (test)' ;;
+  '--no-update --no-selfdev --version') echo 'kcode {version} (test)' ;;
   '--no-update --no-selfdev cloud receive --help') exit 0 ;;
   '--no-update --no-selfdev cloud cancel-return --help') exit 0 ;;
   '--no-update --no-selfdev cloud replace-receive --help') exit 0 ;;
@@ -90,9 +90,9 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 printf '%s\n' "$url" >> "$HOME/downloads"
-if [ "$url" = https://github.com/1jehuang/jcode/releases/latest ]; then
+if [ "$url" = https://github.com/1jehuang/kcode/releases/latest ]; then
   if [ -f "$HOME/latest-url" ]; then cat "$HOME/latest-url"; else
-    printf %s https://github.com/1jehuang/jcode/releases/tag/v0.99.123
+    printf %s https://github.com/1jehuang/kcode/releases/tag/v0.99.123
   fi
   exit 0
 fi
@@ -110,18 +110,18 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         }
 
         fn cli(&self) -> PathBuf {
-            self.dir.path().join(".local/bin/jcode")
+            self.dir.path().join(".local/bin/kcode")
         }
 
         fn backend(&self) -> PathBuf {
-            self.dir.path().join("opt/jcode")
+            self.dir.path().join("opt/kcode")
         }
 
         fn installed(&self, credentials: bool) {
             executable(&self.backend(), &binary("v0.99.1", credentials, false));
             executable(
                 &self.cli(),
-                "#!/bin/sh\nexport JCODE_SERVER_NAME=preserved-host-config\nexec \"$HOME/opt/jcode\" \"$@\"\n",
+                "#!/bin/sh\nexport KCODE_SERVER_NAME=preserved-host-config\nexec \"$HOME/opt/kcode\" \"$@\"\n",
             );
         }
 
@@ -129,27 +129,27 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
             let payload = self.dir.path().join("payload");
             // Same symlink-resolving wrapper layout as build_linux_compat.sh.
             executable(
-                &payload.join("jcode-linux-x86_64"),
+                &payload.join("kcode-linux-x86_64"),
                 "#!/bin/sh\np=$(readlink -f \"$0\")\nexec \"$p.bin\" \"$@\"\n",
             );
             // For post-switch failure injection, use a direct wrapper because the
             // production wrapper resolves its symlink before launching .bin.
             if fail_after_switch {
                 executable(
-                    &payload.join("jcode-linux-x86_64"),
+                    &payload.join("kcode-linux-x86_64"),
                     &binary("v0.99.123", credentials, true),
                 );
             }
             executable(
-                &payload.join("jcode-linux-x86_64.bin"),
+                &payload.join("kcode-linux-x86_64.bin"),
                 &binary("v0.99.123", credentials, false),
             );
             std::fs::write(payload.join("libssl.so.10"), "fixture library").unwrap();
-            let asset = self.dir.path().join("fixtures/jcode-linux-x86_64.tar.gz");
+            let asset = self.dir.path().join("fixtures/kcode-linux-x86_64.tar.gz");
             let mut tar = Command::new("tar");
             tar.arg("czf").arg(&asset).arg("-C").arg(&payload).args([
-                "jcode-linux-x86_64",
-                "jcode-linux-x86_64.bin",
+                "kcode-linux-x86_64",
+                "kcode-linux-x86_64.bin",
                 "libssl.so.10",
             ]);
             if let Some(extra) = extra {
@@ -163,7 +163,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         fn checksum(&self) {
             let output = Command::new("sha256sum")
                 .current_dir(self.dir.path().join("fixtures"))
-                .arg("jcode-linux-x86_64.tar.gz")
+                .arg("kcode-linux-x86_64.tar.gz")
                 .output()
                 .unwrap();
             assert!(output.status.success());
@@ -200,8 +200,8 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
                     "PATH",
                     format!("{}:/usr/bin:/bin", self.dir.path().join("mocks").display()),
                 )
-                .env("JCODE_RUNTIME_RELEASE_SEMVER", "9.9.9")
-                .env_remove("JCODE_CLOUD_FORCE_UPGRADE");
+                .env("KCODE_RUNTIME_RELEASE_SEMVER", "9.9.9")
+                .env_remove("KCODE_CLOUD_FORCE_UPGRADE");
             command
         }
 
@@ -221,7 +221,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
                 !self
                     .dir
                     .path()
-                    .join(".local/share/jcode/cloud-releases/.prepare-lock")
+                    .join(".local/share/kcode/cloud-releases/.prepare-lock")
                     .exists()
             );
         }
@@ -244,7 +244,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         let cache = f
             .dir
             .path()
-            .join(".local/share/jcode/cloud-releases/.capabilities-ok");
+            .join(".local/share/kcode/cloud-releases/.capabilities-ok");
         let cold_evidence = std::fs::read(&cache).unwrap();
         assert_eq!(
             cold_probes.lines().filter(|l| l.contains("cloud ")).count(),
@@ -311,7 +311,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         std::fs::remove_file(
             f.dir
                 .path()
-                .join(".local/share/jcode/cloud-releases/.capabilities-ok"),
+                .join(".local/share/kcode/cloud-releases/.capabilities-ok"),
         )
         .unwrap();
         std::fs::write(f.dir.path().join("probes"), "").unwrap();
@@ -346,7 +346,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         let cache = f
             .dir
             .path()
-            .join(".local/share/jcode/cloud-releases/.capabilities-ok");
+            .join(".local/share/kcode/cloud-releases/.capabilities-ok");
         let saved = std::fs::read_to_string(&cache).unwrap();
         let (_, snapshot) = saved.split_once('\n').unwrap();
         let now = std::time::SystemTime::now()
@@ -413,7 +413,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         assert!(String::from_utf8_lossy(&result.stderr).contains("selected cloud runtime lacks"));
         assert!(f.dir.path().join("policy-checks").exists());
         assert!(!f.dir.path().join("downloads").exists());
-        let result = f.run_candidate(None, Some("jcode"));
+        let result = f.run_candidate(None, Some("kcode"));
         assert!(!result.status.success());
         assert!(
             String::from_utf8_lossy(&result.stderr)
@@ -473,7 +473,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         let f = Fixture::new();
         f.installed(false);
         f.artifact(true, false, None);
-        let candidate = f.dir.path().join("payload/jcode-linux-x86_64");
+        let candidate = f.dir.path().join("payload/kcode-linux-x86_64");
         let result = f.run_candidate(None, candidate.to_str());
         assert!(
             result.status.success(),
@@ -518,7 +518,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         assert!(f.backend().is_symlink());
         let downloads = std::fs::read_to_string(f.dir.path().join("downloads")).unwrap();
         assert!(downloads.contains("/releases/latest"));
-        assert!(downloads.contains("/v0.99.123/jcode-linux-x86_64.tar.gz"));
+        assert!(downloads.contains("/v0.99.123/kcode-linux-x86_64.tar.gz"));
         let result = f.run(None);
         assert!(result.status.success());
         assert_eq!(
@@ -531,16 +531,16 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
     fn development_rejects_invalid_latest_redirects_without_switching() {
         for latest in [
             "https://evil.example/releases/tag/v0.99.123",
-            "https://github.com/1jehuang/jcode/releases/tag/v01.2.3",
-            "https://github.com/1jehuang/jcode/releases/tag/v0.99.123\nv1.2.3",
-            "https://github.com/1jehuang/jcode/releases/tag/v0.99.123-dev",
+            "https://github.com/1jehuang/kcode/releases/tag/v01.2.3",
+            "https://github.com/1jehuang/kcode/releases/tag/v0.99.123\nv1.2.3",
+            "https://github.com/1jehuang/kcode/releases/tag/v0.99.123-dev",
         ] {
             let f = Fixture::new();
             f.installed(false);
             std::fs::write(f.dir.path().join("latest-url"), latest).unwrap();
             let result = f.run(None);
             assert!(!result.status.success(), "{latest}");
-            assert!(String::from_utf8_lossy(&result.stderr).contains("JCODE_CLOUD_RELEASE"));
+            assert!(String::from_utf8_lossy(&result.stderr).contains("KCODE_CLOUD_RELEASE"));
             f.assert_old();
         }
     }
@@ -576,16 +576,16 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
             "cloud replace-receive --help') exit 0",
             "cloud replace-receive --help') exit 2",
         );
-        executable(&payload.join("jcode-linux-x86_64.bin"), &candidate);
+        executable(&payload.join("kcode-linux-x86_64.bin"), &candidate);
         assert!(
             Command::new("tar")
                 .arg("czf")
-                .arg(f.dir.path().join("fixtures/jcode-linux-x86_64.tar.gz"))
+                .arg(f.dir.path().join("fixtures/kcode-linux-x86_64.tar.gz"))
                 .arg("-C")
                 .arg(&payload)
                 .args([
-                    "jcode-linux-x86_64",
-                    "jcode-linux-x86_64.bin",
+                    "kcode-linux-x86_64",
+                    "kcode-linux-x86_64.bin",
                     "libssl.so.10"
                 ])
                 .status()
@@ -624,13 +624,13 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
                 path.file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .starts_with("jcode.previous.")
+                    .starts_with("kcode.previous.")
             })
             .unwrap();
         assert!(std::fs::read_to_string(backup).unwrap().contains("v0.99.1"));
         assert!(target.with_file_name("libssl.so.10").exists());
         let downloads = std::fs::read_to_string(f.dir.path().join("downloads")).unwrap();
-        assert!(downloads.contains("/v0.99.123/jcode-linux-x86_64.tar.gz"));
+        assert!(downloads.contains("/v0.99.123/kcode-linux-x86_64.tar.gz"));
         // Exact version plus both capabilities makes subsequent runs idempotent.
         let result = f.run(Some("v0.99.123"));
         assert!(
@@ -692,7 +692,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
             if mode == "checksum" {
                 std::fs::write(
                     f.dir.path().join("fixtures/SHA256SUMS"),
-                    format!("{}  jcode-linux-x86_64.tar.gz\n", "0".repeat(64)),
+                    format!("{}  kcode-linux-x86_64.tar.gz\n", "0".repeat(64)),
                 )
                 .unwrap();
             }
@@ -708,12 +708,12 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
                 assert!(
                     Command::new("tar")
                         .arg("czf")
-                        .arg(f.dir.path().join("fixtures/jcode-linux-x86_64.tar.gz"))
+                        .arg(f.dir.path().join("fixtures/kcode-linux-x86_64.tar.gz"))
                         .arg("-C")
                         .arg(payload)
                         .args([
-                            "jcode-linux-x86_64",
-                            "jcode-linux-x86_64.bin",
+                            "kcode-linux-x86_64",
+                            "kcode-linux-x86_64.bin",
                             "libssl.so.10"
                         ])
                         .status()
@@ -781,7 +781,7 @@ cp "$HOME/fixtures/${url##*/}" "$dest"
         executable(
             &f.dir.path().join("mocks/mv"),
             r#"#!/bin/sh
-case "$*" in *jcode.previous.*) exit 98 ;; esac
+case "$*" in *kcode.previous.*) exit 98 ;; esac
 exec /usr/bin/mv "$@"
 "#,
         );
@@ -799,7 +799,7 @@ exec /usr/bin/mv "$@"
                     .unwrap()
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("jcode.previous."))
+                    .starts_with("kcode.previous."))
         );
     }
 

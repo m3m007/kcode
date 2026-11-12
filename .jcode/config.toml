@@ -1,0 +1,25 @@
+[provider]
+default_provider = "litellm"
+default_model = "step-3.7-flash"
+
+[providers.litellm]
+type = "openai-compatible"
+base_url = "http://127.0.0.1:4000/v1"
+auth = "bearer"
+api_key_env = "KCODE_PROVIDER_LITELLM_API_KEY"
+env_file = "provider-litellm.env"
+default_model = "step-3.7-flash"
+requires_api_key = true
+
+[[providers.litellm.models]]
+id = "step-3.7-flash"
+
+[features]
+memory = true
+
+[agents]
+memory_sidecar_enabled = true
+
+[compaction]
+mode = "reactive"
+max_context_tokens = 400000

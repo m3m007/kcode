@@ -1,13 +1,13 @@
-name = "jcode-telemetry"
+name = "kcode-telemetry"
 main = "src/worker.js"
 compatibility_date = "2025-01-01"
 
-# Custom domain for the website beacon (jcode-website public/beacon.js posts
+# Custom domain for the website beacon (kcode-website public/beacon.js posts
 # here). Managed as a Workers custom domain, so Cloudflare creates the DNS
 # record and certificate automatically on deploy.
 routes = [
   { pattern = "telemetry.solosystems.dev", custom_domain = true },
-  { pattern = "telemetry.jcode.sh", custom_domain = true }
+  { pattern = "telemetry.kcode.sh", custom_domain = true }
 ]
 
 # Nightly retention prune (see RETENTION_DAYS in src/worker.js). Workers Paid
@@ -18,21 +18,21 @@ crons = ["17 4 * * *"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "jcode-telemetry"
+database_name = "kcode-telemetry"
 database_id = "abaa524c-3e90-4ba9-a569-027e78a083c6"
 
 # High-volume raw families (BULK_EVENTS in src/worker.js) live in a second
 # database so each stays under D1's 10 GB per-database cap. Same schema.sql.
 [[d1_databases]]
 binding = "DB_BULK"
-database_name = "jcode-telemetry-bulk"
+database_name = "kcode-telemetry-bulk"
 database_id = "e7bb5e59-4a72-4dd2-b2c2-bcde2ebe011a"
 
 # Separately consented prompt/transcript content. Keep this bucket private and
 # configure an R2 lifecycle rule that deletes objects after 30 days.
 [[r2_buckets]]
 binding = "TRANSCRIPTS"
-bucket_name = "jcode-consented-transcripts"
+bucket_name = "kcode-consented-transcripts"
 
 # High-volume firehose: every event is also written to Workers Analytics
 # Engine (time-series store, ~90-day retention, no database size cap). This is

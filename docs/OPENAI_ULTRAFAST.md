@@ -10,14 +10,14 @@ Use `/fast` to inspect the current tier, `/fast on` for Fast, and `/fast off`
 for Standard. Alt+Up and Alt+Down step through Standard, Fast, and Ultrafast
 for supported models, in local and remote sessions.
 
-To opt in persistently, set this in your Jcode config:
+To opt in persistently, set this in your Kcode config:
 
 ```toml
 [provider]
 openai_service_tier = "ultrafast"
 ```
 
-Alternatively, launch Jcode with `JCODE_OPENAI_SERVICE_TIER=ultrafast`.
+Alternatively, launch Kcode with `KCODE_OPENAI_SERVICE_TIER=ultrafast`.
 The existing default stays `priority` (Fast), not Ultrafast.
 `/fast default on|off` controls the Fast default, not the Ultrafast default.
 The provider accepts `ultrafast`, `ultra`, and `ultra-fast`, normalizing all
@@ -25,7 +25,7 @@ three to the exact wire value `service_tier: "ultrafast"`.
 
 ## Models, transports, and access
 
-The current API guide lists `gpt-6-astra` and `gpt-6.1-sol`. Jcode offers
+The current API guide lists `gpt-6-astra` and `gpt-6.1-sol`. Kcode offers
 Ultrafast for these models and their snapshot/context variants. Existing
 `gpt-5.6-sol` preview support is retained: the Responses reference still
 lists this older model, while the current guide lists the newer models.
@@ -45,7 +45,7 @@ API Ultrafast is available to all API users on the documented models, with
 separate rate limits and higher per-token charges. Codex is different:
 Ultrafast for Astra and Sol requires Pro $500 or eligible Enterprise/Edu
 access and applicable workspace permissions. Plus, Pro $100/$200, and Business
-do not gain Ultrafast just by purchasing credits. Jcode cannot infer all
+do not gain Ultrafast just by purchasing credits. Kcode cannot infer all
 server-side entitlements from a model ID. The tier UI reports model support,
 not an entitlement guarantee, and server errors still apply.
 

@@ -1,12 +1,12 @@
 # Jev browser task handoff
 
 `browser(action="handoff")` delegates a whole task in one explicit tab and frame.
-Jcode owns the task state and execution loop. Jev selects the next action from the
+Kcode owns the task state and execution loop. Jev selects the next action from the
 current trusted action catalog using the typed Decisions API. It does not generate
 JavaScript or run a separate chat-completion agent.
 
 For a new task tab, use `browser(action="handoff", url="https://example.com",
-new_tab=true, goal="...")`. Jcode creates the tab and binds the handoff to the
+new_tab=true, goal="...")`. Kcode creates the tab and binds the handoff to the
 returned tab ID before observing the page. Any old tab/frame target is replaced.
 Creation failures stop the task rather than falling back to an unrelated tab.
 With a URL and no tab ID, handoff also creates a fresh tab unless `new_tab=false`.
@@ -23,7 +23,7 @@ Each cycle sends:
 - Previous actions, their results, and evidence from pages visited earlier.
 - Available browser actions and the remaining action budget.
 
-Jcode executes the selected action, observes its result, appends that evidence, and
+Kcode executes the selected action, observes its result, appends that evidence, and
 consults Jev again. Navigation is an intermediate step, not an implicit handback.
 The default budget is 40 actions, with a maximum of 100 and a ten-minute task deadline.
 Results use a rolling retention budget, and the transport compacts older history to
@@ -61,7 +61,7 @@ orchestration.
 Run the browser regression suite through `selfdev test`:
 
 ```sh
-justrust test -p jcode-app-core --lib browser
+justrust test -p kcode-app-core --lib browser
 ```
 
 For live acceptance, check browser readiness, create a dedicated disposable

@@ -1,14 +1,14 @@
 #!/bin/bash
 # Tool call benchmarking script
 # Measures execution time for each tool with representative inputs
-# Run from the jcode repo root
+# Run from the kcode repo root
 
 set -euo pipefail
 
 ITERATIONS=${1:-5}
-RESULTS_FILE="/tmp/jcode_tool_benchmark_$(date +%Y%m%d_%H%M%S).csv"
+RESULTS_FILE="/tmp/kcode_tool_benchmark_$(date +%Y%m%d_%H%M%S).csv"
 
-echo "=== jcode Tool Call Benchmark ==="
+echo "=== kcode Tool Call Benchmark ==="
 echo "Iterations per tool: $ITERATIONS"
 echo "Results file: $RESULTS_FILE"
 echo ""
@@ -61,11 +61,11 @@ benchmark_tool() {
 }
 
 # Find debug socket
-DEBUG_SOCK="${JCODE_DEBUG_SOCK:-/run/user/$(id -u)/jcode-debug.sock}"
+DEBUG_SOCK="${KCODE_DEBUG_SOCK:-/run/user/$(id -u)/kcode-debug.sock}"
 
 if [ ! -S "$DEBUG_SOCK" ]; then
     echo "ERROR: Debug socket not found at $DEBUG_SOCK"
-    echo "Make sure jcode is running with debug control enabled."
+    echo "Make sure kcode is running with debug control enabled."
     exit 1
 fi
 
@@ -142,7 +142,7 @@ benchmark_tool "agentgrep" "{\"mode\":\"find\",\"glob\":\"**/*.rs\",\"path\":\"s
 
 benchmark_tool "bash" "{\"command\":\"ls\"}" "bash ls (repo root)"
 benchmark_tool "bash" "{\"command\":\"ls src\"}" "bash ls (src/)"
-benchmark_tool "bash" "{\"command\":\"ls crates/jcode-app-core/src/tool\"}" "bash ls (tools/)"
+benchmark_tool "bash" "{\"command\":\"ls crates/kcode-app-core/src/tool\"}" "bash ls (tools/)"
 
 echo ""
 echo "=== Shell Tools ==="

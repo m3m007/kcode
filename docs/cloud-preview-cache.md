@@ -2,7 +2,7 @@
 
 Cloud ownership and resume stay on the remote daemon. The resume picker keeps a
 separate, read-only replica for previews in
-`~/.jcode/cache/cloud-previews/v1/`. It never installs that replica in the
+`~/.kcode/cache/cloud-previews/v1/`. It never installs that replica in the
 canonical local `sessions/` directory or changes a migration lease.
 
 ## Behavior
@@ -65,9 +65,9 @@ The ignored live benchmark must run locally because it needs the user's local
 SSH identity and managed cloud proxy credentials. It is not sent to hosted CI:
 
 ```bash
-JCODE_CLOUD_PREVIEW_BENCH_SESSION=<session-id> \
-JCODE_CLOUD_PREVIEW_BENCH_HOST=<ssh-host> \
-justrust test --local -p jcode-tui --lib live_cloud_preview_benchmark \
+KCODE_CLOUD_PREVIEW_BENCH_SESSION=<session-id> \
+KCODE_CLOUD_PREVIEW_BENCH_HOST=<ssh-host> \
+justrust test --local -p kcode-tui --lib live_cloud_preview_benchmark \
   -- --ignored --nocapture --test-threads=1
 ```
 

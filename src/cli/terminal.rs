@@ -10,8 +10,8 @@ pub struct TuiRuntimeState {
     focus_change: bool,
 }
 
-const INHERITED_MODES_ENV: &str = "JCODE_TUI_INHERITED_MODES";
-const INHERITED_THEME_ENV: &str = "JCODE_TUI_INHERITED_THEME";
+const INHERITED_MODES_ENV: &str = "KCODE_TUI_INHERITED_MODES";
+const INHERITED_THEME_ENV: &str = "KCODE_TUI_INHERITED_THEME";
 
 // Crossterm's Windows implementation enables Win32 console mouse input but does
 // not emit the VT mouse-tracking modes. Windows Terminal and other ConPTY hosts
@@ -193,7 +193,7 @@ pub fn install_panic_hook() {
                 telemetry::record_crash(&provider, &model, telemetry::SessionEndReason::Panic);
             }
 
-            if std::env::var_os("JCODE_SSH_REMOTE").is_none()
+            if std::env::var_os("KCODE_SSH_REMOTE").is_none()
                 && let Ok(mut session) = session::Session::load(&session_id)
                 && should_record_panic_as_crash(&session.status)
             {
@@ -205,7 +205,7 @@ pub fn install_panic_hook() {
 }
 
 pub fn mark_current_session_crashed(message: String) {
-    if std::env::var_os("JCODE_SSH_REMOTE").is_some() {
+    if std::env::var_os("KCODE_SSH_REMOTE").is_some() {
         return;
     }
     if let Some(session_id) = get_current_session() {
@@ -257,7 +257,7 @@ pub fn show_crash_resume_hint() {
 /// Pure so the wording is testable: the lines are printed to stderr outside the
 /// TUI, where nothing asserts on them, and the bug in issue #690 was purely
 /// about wording (the single-session form never mentioned that bare
-/// `jcode --resume` opens a searchable picker, so it read as "memorize this ID
+/// `kcode --resume` opens a searchable picker, so it read as "memorize this ID
 /// or lose the session").
 fn crash_resume_hint_lines(
     crashed: &[(String, String)],
@@ -273,12 +273,12 @@ fn crash_resume_hint_lines(
     if crashed.len() == 1 {
         vec![
             format!(
-                "{yellow}💥 Session {bold}{session_label}{reset}{yellow} crashed. Resume with:{reset}  jcode --resume {id}"
+                "{yellow}💥 Session {bold}{session_label}{reset}{yellow} crashed. Resume with:{reset}  kcode --resume {id}"
             ),
             // Always mention the picker. Showing only the ID form reads as
             // "write this down or lose the session", when bare
-            // `jcode --resume` opens a searchable list (issue #690).
-            format!("{yellow}   Or browse all:{reset} jcode --resume"),
+            // `kcode --resume` opens a searchable list (issue #690).
+            format!("{yellow}   Or browse all:{reset} kcode --resume"),
         ]
     } else {
         vec![
@@ -286,8 +286,8 @@ fn crash_resume_hint_lines(
                 "{yellow}💥 {} sessions crashed recently. Most recent: {bold}{session_label}{reset}",
                 crashed.len()
             ),
-            format!("{yellow}   Resume with:{reset}  jcode --resume {id}"),
-            format!("{yellow}   List all:{reset}     jcode --resume"),
+            format!("{yellow}   Resume with:{reset}  kcode --resume {id}"),
+            format!("{yellow}   List all:{reset}     kcode --resume"),
         ]
     }
 }
@@ -313,13 +313,13 @@ mod crash_resume_hint_tests {
         let joined = lines.join("\n");
 
         assert!(
-            joined.contains("jcode --resume ses_koala_123"),
+            joined.contains("kcode --resume ses_koala_123"),
             "the direct resume command must still be offered: {joined}"
         );
         assert!(
             lines
                 .iter()
-                .any(|line| line.contains("Or browse all: jcode --resume")),
+                .any(|line| line.contains("Or browse all: kcode --resume")),
             "the picker form (bare --resume) must be mentioned too: {joined}"
         );
     }
@@ -338,31 +338,31 @@ mod crash_resume_hint_tests {
         let joined = lines.join("\n");
 
         assert!(joined.contains("2 sessions crashed"), "{joined}");
-        assert!(joined.contains("jcode --resume ses_koala_123"), "{joined}");
+        assert!(joined.contains("kcode --resume ses_koala_123"), "{joined}");
         assert!(joined.contains("List all:"), "{joined}");
     }
 }
 
 fn init_tui_terminal(inherited_terminal: bool) -> Result<ratatui::DefaultTerminal> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        anyhow::bail!("jcode TUI requires an interactive terminal (stdin/stdout must be a TTY)");
+        anyhow::bail!("kcode TUI requires an interactive terminal (stdin/stdout must be a TTY)");
     }
     if inherited_terminal {
         init_tui_terminal_resume()
     } else {
-        jcode_tui_style::init_terminal()
+        kcode_tui_style::init_terminal()
             .map_err(|error| anyhow::anyhow!("failed to initialize terminal: {error}"))
     }
 }
 
 pub fn init_tui_runtime() -> Result<(ratatui::DefaultTerminal, TuiRuntimeGuard)> {
-    let is_resuming = std::env::var_os("JCODE_RESUMING").is_some();
+    let is_resuming = std::env::var_os("KCODE_RESUMING").is_some();
     let inherited_theme = std::env::var(INHERITED_THEME_ENV).ok();
     let inherited_modes_raw = std::env::var(INHERITED_MODES_ENV).ok();
     let inherited_modes = inherited_modes_raw
         .as_deref()
         .and_then(InheritedTerminalModes::decode);
-    // JCODE_RESUMING describes the session lifecycle, but only a valid modes
+    // KCODE_RESUMING describes the session lifecycle, but only a valid modes
     // handoff proves the previous process deliberately left the terminal live
     // across exec. A restart used to restore the terminal before exec while the
     // new process still took the resume path, leaving it on the primary screen
@@ -377,13 +377,13 @@ pub fn init_tui_runtime() -> Result<(ratatui::DefaultTerminal, TuiRuntimeGuard)>
         crate::tui::theme_detect::init_theme_mode();
     }
     let terminal = init_tui_terminal(inherited_terminal)?;
-    crate::tui::mermaid::install_jcode_mermaid_hooks();
-    crate::tui::markdown::install_jcode_markdown_hooks();
+    crate::tui::mermaid::install_kcode_mermaid_hooks();
+    crate::tui::markdown::install_kcode_markdown_hooks();
     crate::tui::mermaid::init_picker();
 
     let perf_policy = crate::perf::tui_policy();
     // These private handoff values apply only to this exec boundary. Avoid
-    // leaking them into tools or unrelated child jcode processes.
+    // leaking them into tools or unrelated child kcode processes.
     crate::env::remove_var(INHERITED_MODES_ENV);
     crate::env::remove_var(INHERITED_THEME_ENV);
 
@@ -502,7 +502,7 @@ fn cleanup_tui_runtime(state: &TuiRuntimeState, restore_terminal: bool) {
         if state.keyboard_enhanced {
             tui::disable_keyboard_enhancement();
         }
-        jcode_tui_style::restore_terminal_quietly();
+        kcode_tui_style::restore_terminal_quietly();
     }
 }
 
@@ -556,7 +556,7 @@ fn write_session_resume_hint(mut writer: impl Write, session_id: &str) -> io::Re
     if let Some(command) = super::ssh::resume_hint(session_id) {
         writeln!(writer, "  {command}")?;
     } else {
-        writeln!(writer, "  jcode --resume {}", session_id)?;
+        writeln!(writer, "  kcode --resume {}", session_id)?;
     }
     writeln!(writer)?;
     Ok(())
@@ -620,7 +620,7 @@ fn handle_termination_signal(sig: i32) -> ! {
     // skip its restore while an editor owns the terminal and then release the
     // kitty state lock while this process is still alive: an editor reclaim
     // racing into that gap must observe the flag and refuse to re-arm modes,
-    // or the shell inherits escape sequences once jcode exits (greptile
+    // or the shell inherits escape sequences once kcode exits (greptile
     // #4232838288). Recording first also keeps the normal path intact: a
     // reclaim that slips in before the cleanup still leaves ownership clear,
     // so the cleanup runs its full restore.
@@ -632,9 +632,9 @@ fn handle_termination_signal(sig: i32) -> ! {
         // below). Pop only when this process still owns an unbalanced kitty entry:
         // the pop is a no-op on terminals with no kitty stack, and skipping it when
         // a suspended editor already popped ours (or pushed its own) avoids
-        // removing someone else's keyboard settings. Leaving jcode's own entry
+        // removing someone else's keyboard settings. Leaving kcode's own entry
         // unpopped would leave the terminal in CSI u mode so the following shell
-        // echoes raw key sequences like `e1;1:3u` after jcode exits (issue #898).
+        // echoes raw key sequences like `e1;1:3u` after kcode exits (issue #898).
         crate::tui::disable_keyboard_enhancement();
     }
 
@@ -662,7 +662,7 @@ fn signal_cleanup_terminal_modes_to(mut writer: impl Write) -> bool {
     // lock so an in-flight editor handoff cannot split them: the handoff
     // publishes ownership under the same lock after its restores finished
     // (greptile #4230626960). Without the lock, a signal could observe
-    // ownership set while jcode's modes were still armed, skip the cleanup,
+    // ownership set while kcode's modes were still armed, skip the cleanup,
     // and exit leaving the shell in raw mode.
     crate::tui::with_kitty_state_lock(|| {
         if crate::tui::editor_owns_terminal() {
@@ -685,7 +685,7 @@ fn signal_cleanup_terminal_modes_to(mut writer: impl Write) -> bool {
 /// Stream the signal cleanup must target: stdout, the interactive terminal
 /// the TUI requires, where `setup_terminal` enabled every mode this cleanup
 /// disables. Writing to stderr would miss the terminal whenever stderr is
-/// redirected and leave the modes armed after jcode exits.
+/// redirected and leave the modes armed after kcode exits.
 #[cfg(unix)]
 fn signal_cleanup_stream() -> std::io::Stdout {
     std::io::stdout()
@@ -729,7 +729,7 @@ mod signal_cleanup_tests {
     #[test]
     fn signal_cleanup_waits_for_in_flight_editor_handoff() {
         // Greptile #4230626960: the cleanup must not observe a half-applied
-        // handoff (flag published while jcode's modes are still armed). The
+        // handoff (flag published while kcode's modes are still armed). The
         // publication and reclaim hold the kitty state lock, so the cleanup
         // waits for them instead of racing the flag.
         let _test_lock = SIGNAL_CLEANUP_TEST_LOCK.lock().unwrap();
@@ -950,7 +950,7 @@ mod tests {
             let mut output = Vec::new();
             write_session_resume_hint(&mut output, &session_id).unwrap();
             let output = String::from_utf8(output).unwrap();
-            let expected_cmd = format!("jcode --resume {}", session_id);
+            let expected_cmd = format!("kcode --resume {}", session_id);
             assert!(output.contains(&expected_cmd));
             assert!(output.contains("to resume"));
             assert!(!session_id.is_empty());

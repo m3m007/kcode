@@ -21,7 +21,7 @@ This is 32.8% less time for the measured Markdown-plus-selection-metadata work. 
 Reproduce:
 
 ```sh
-justrust test -p jcode-tui --lib --profile selfdev assistant_aux_cold_comparison_benchmark -- --ignored --nocapture
+justrust test -p kcode-tui --lib --profile selfdev assistant_aux_cold_comparison_benchmark -- --ignored --nocapture
 # justrust retains passing-test output in its run log:
 justrust log --grep 'assistant_aux cold'
 ```
@@ -31,7 +31,7 @@ justrust log --grep 'assistant_aux cold'
 The broader UI group passes with explicit truecolor support, which its pre-existing shimmer-color test requires on hosted runners:
 
 ```sh
-justrust test -p jcode-tui --lib --profile selfdev \
+justrust test -p kcode-tui --lib --profile selfdev \
   --config 'env.COLORTERM.value="truecolor"' \
   --config 'env.COLORTERM.force=true' tui::ui::tests -- --test-threads=1
 ```

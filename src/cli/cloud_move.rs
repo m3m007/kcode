@@ -1,11 +1,11 @@
-//! `jcode cloud move` / `jcode cloud return`: carry a live session to another
+//! `kcode cloud move` / `kcode cloud return`: carry a live session to another
 //! machine and back.
 //!
 //! # Model
 //!
 //! - **Conversation: one owner.** A transcript cannot be merged, so exactly one
 //!   machine runs turns at a time. Ownership is a per-machine lease
-//!   (`jcode_storage::session_lease`) with a shared, monotonic migration epoch.
+//!   (`kcode_storage::session_lease`) with a shared, monotonic migration epoch.
 //!   The old owner's in-memory agent refuses to start turns or persist once the
 //!   lease says the session moved.
 //! - **Code: git.** The move ships the exact local state (HEAD, branch,
@@ -19,7 +19,7 @@
 //!   leaves the conversation local. A staged repo and an imported account may
 //!   already exist remotely, but no remote turns have been activated.
 //!
-//! The remote half is the hidden `jcode cloud receive|activate|export`
+//! The remote half is the hidden `kcode cloud receive|activate|export`
 //! commands, invoked over `ssh <host>` (or `--transport` for tests).
 //! Jcode-owned OpenAI/Claude OAuth accounts travel separately over
 //! SSH, never in the repository/session tarball. Moving is consent to copy those
@@ -78,7 +78,7 @@ const REQUIRED_REMOTE_COMMANDS: [&str; 6] = [
     "replace-receive",
     "group-protocol",
 ];
-const SNAPSHOT_REF_PREFIX: &str = "refs/jcode-cloud";
+const SNAPSHOT_REF_PREFIX: &str = "refs/kcode-cloud";
 /// Environment variables worth carrying. Everything else (DISPLAY, WAYLAND_*,
 /// SSH_AUTH_SOCK, DBUS_*, XDG_RUNTIME_DIR, secrets) is machine-local.
 const ENV_ALLOWLIST: &[&str] = &[
@@ -152,13 +152,13 @@ fn baseline_path(session_id: &str) -> Result<PathBuf> {
     {
         bail!("invalid session ID for cloud credential baseline");
     }
-    Ok(storage::jcode_dir()?
+    Ok(storage::kcode_dir()?
         .join("cloud_auth")
         .join(format!("{session_id}.json")))
 }
 
 fn import_return_credentials(session_id: &str, account: &CloudAccount, bytes: &[u8]) -> Result<()> {
-    let home = storage::jcode_dir()?;
+    let home = storage::kcode_dir()?;
     let path = baseline_path(session_id)?;
     let baselines = if path.exists() {
         let value: serde_json::Value = read_json(&path)?;
@@ -236,7 +236,7 @@ fn session_credentials(sess: &session::Session) -> Result<Option<CloudCredential
         return Ok(None);
     };
     Ok(Some(transfer::export_cloud_account_at(
-        &storage::jcode_dir()?,
+        &storage::kcode_dir()?,
         provider,
         label,
     )?))
@@ -252,7 +252,7 @@ fn export_router_credentials() -> Result<router_transfer::RouterBundle> {
         .filter_map(|profile| profile.env_file.clone())
         .collect();
     let names = router_transfer::env_file_names(named.iter().map(String::as_str));
-    router_transfer::export_at(&storage::jcode_dir()?, &storage::app_config_dir()?, &names)
+    router_transfer::export_at(&storage::kcode_dir()?, &storage::app_config_dir()?, &names)
         .map_err(Into::into)
 }
 
@@ -261,7 +261,7 @@ fn run_router_credentials() -> Result<()> {
     std::io::stdin()
         .take((router_transfer::MAX_BUNDLE_BYTES + 1) as u64)
         .read_to_end(&mut bytes)?;
-    router_transfer::import_at(&storage::jcode_dir()?, &storage::app_config_dir()?, &bytes)?;
+    router_transfer::import_at(&storage::kcode_dir()?, &storage::app_config_dir()?, &bytes)?;
     notify_daemon_auth_changed();
     Ok(())
 }
@@ -304,7 +304,7 @@ fn notify_daemon_auth_changed() {
 }
 
 fn cloud_accounts() -> Result<Vec<CloudAccount>> {
-    Ok(transfer::cloud_accounts_at(&storage::jcode_dir()?)?
+    Ok(transfer::cloud_accounts_at(&storage::kcode_dir()?)?
         .into_iter()
         .map(|(provider, label)| CloudAccount { provider, label })
         .collect())
@@ -316,7 +316,7 @@ fn transferred_accounts_path(session_id: &str) -> Result<PathBuf> {
 
 fn run_credentials(provider: &str, account: &str, export: bool) -> Result<()> {
     let provider = provider.parse::<TransferProvider>()?;
-    let home = storage::jcode_dir()?;
+    let home = storage::kcode_dir()?;
     if export {
         let payload = transfer::export_cloud_account_at(&home, provider, Some(account))?;
         std::io::stdout().write_all(payload.as_bytes())?;
@@ -375,7 +375,7 @@ pub(crate) struct MoveReport {
 const PREFLIGHT_FRESH_SECS: u64 = 120;
 
 fn preflight_marker() -> Option<PathBuf> {
-    storage::jcode_dir()
+    storage::kcode_dir()
         .ok()
         .map(|dir| dir.join("cloud-preflight-ok"))
 }
@@ -411,7 +411,7 @@ fn memory_marker(host: &str, memory: &Path) -> Option<PathBuf> {
         format!("{host}\n{}", memory.display()).as_bytes(),
     ));
     Some(
-        storage::jcode_dir()
+        storage::kcode_dir()
             .ok()?
             .join("cloud-memory-sent")
             .join(name),
@@ -452,7 +452,7 @@ pub(crate) fn run_move(
     if let Some(lease) = storage::read_session_lease(&session_id)
         && let Some(away) = lease.away_host
     {
-        bail!("session {session_id} already lives on `{away}`. Use `jcode cloud return` first");
+        bail!("session {session_id} already lives on `{away}`. Use `kcode cloud return` first");
     }
     if !allow_active && storage::streaming_session_ids().contains(&session_id) {
         bail!(
@@ -489,7 +489,7 @@ pub(crate) fn run_move(
                 .or_else(|| std::env::current_dir().ok())
                 .context("session has no working directory")?;
             let staging = tempfile::Builder::new()
-                .prefix("jcode-cloud-move-")
+                .prefix("kcode-cloud-move-")
                 .tempdir()?;
             let stage = staging.path();
 
@@ -637,7 +637,7 @@ pub(crate) fn run_move(
                     // Export at send time so a token refreshed by another
                     // local session during snapshotting is not shipped stale.
                     let credentials = transfer::export_cloud_account_at(
-                        &storage::jcode_dir()?,
+                        &storage::kcode_dir()?,
                         account.provider,
                         Some(&account.label),
                     )?;
@@ -715,8 +715,8 @@ pub(crate) fn run_move(
         repo_root: repo.as_ref().map(|r| r.root.clone()),
         snapshot: repo.as_ref().map(|r| r.snapshot.clone()),
         dry_run,
-        attach_command: format!("jcode cloud attach --session {session_id}"),
-        return_command: format!("jcode cloud return --session {session_id}"),
+        attach_command: format!("kcode cloud attach --session {session_id}"),
+        return_command: format!("kcode cloud return --session {session_id}"),
     };
     if dry_run {
         step(
@@ -869,7 +869,7 @@ pub(crate) fn run_return(
         target.run_remote(&host, &args, None)
     })?;
     let staging = tempfile::Builder::new()
-        .prefix("jcode-cloud-return-")
+        .prefix("kcode-cloud-return-")
         .tempdir()?;
     let stage = staging.path();
     let tarball = stage.join("return.tar");
@@ -1032,7 +1032,7 @@ fn return_state_path(session_id: &str, epoch: u64, name: &str) -> Result<PathBuf
     {
         bail!("invalid cloud return session id");
     }
-    Ok(storage::jcode_dir()?
+    Ok(storage::kcode_dir()?
         .join("cloud-returns")
         .join(session_id)
         .join(epoch.to_string())
@@ -1062,7 +1062,7 @@ fn complete_remote_return(target: &Target, report: &ReturnReport) -> Result<()> 
             "--epoch", &report.epoch.to_string(),
         ], None)
     }).with_context(|| format!(
-        "session is safely local, but the cloud checkout remains protected; upgrade the cloud jcode if needed, then retry `jcode cloud return --session {} --refs-only` to finish recovery",
+        "session is safely local, but the cloud checkout remains protected; upgrade the cloud kcode if needed, then retry `kcode cloud return --session {} --refs-only` to finish recovery",
         report.session_id
     ))?;
     Ok(())
@@ -1120,7 +1120,7 @@ pub(crate) fn run_receive() -> Result<()> {
     group::reject_member_return(&manifest.session_id)?;
     if manifest.format_version != FORMAT_VERSION {
         bail!(
-            "move format {} not supported by this jcode (expects {FORMAT_VERSION}); update jcode on the cloud host",
+            "move format {} not supported by this kcode (expects {FORMAT_VERSION}); update kcode on the cloud host",
             manifest.format_version
         );
     }
@@ -1279,7 +1279,7 @@ fn export_return_archive(
     let result = (|| -> Result<Vec<u8>> {
         let sess = session::Session::load(session_id).context("load cloud return session")?;
         let staging = tempfile::Builder::new()
-            .prefix("jcode-cloud-export-")
+            .prefix("kcode-cloud-export-")
             .tempdir()?;
         let stage = staging.path();
         let working_dir = sess
@@ -1640,7 +1640,7 @@ fn prepare_repo_snapshot(
             "-p",
             &head,
             "-m",
-            &format!("jcode cloud snapshot for {session_id}"),
+            &format!("kcode cloud snapshot for {session_id}"),
         ],
         &identity_env(&root_path),
     )?;
@@ -1693,15 +1693,15 @@ fn identity_env(root: &Path) -> Vec<(&'static str, &'static std::ffi::OsStr)> {
         return Vec::new();
     }
     vec![
-        ("GIT_AUTHOR_NAME", std::ffi::OsStr::new("jcode snapshot")),
+        ("GIT_AUTHOR_NAME", std::ffi::OsStr::new("kcode snapshot")),
         (
             "GIT_AUTHOR_EMAIL",
-            std::ffi::OsStr::new("snapshot@jcode.invalid"),
+            std::ffi::OsStr::new("snapshot@kcode.invalid"),
         ),
-        ("GIT_COMMITTER_NAME", std::ffi::OsStr::new("jcode snapshot")),
+        ("GIT_COMMITTER_NAME", std::ffi::OsStr::new("kcode snapshot")),
         (
             "GIT_COMMITTER_EMAIL",
-            std::ffi::OsStr::new("snapshot@jcode.invalid"),
+            std::ffi::OsStr::new("snapshot@kcode.invalid"),
         ),
     ]
 }
@@ -1718,7 +1718,7 @@ fn restore_repo(
     let snap_ref = format!("{SNAPSHOT_REF_PREFIX}/{session_id}/outgoing");
     if root.join(".git").exists() {
         // Existing checkout (an earlier move, dry run, or return). Overwrite
-        // only when its working state still equals a snapshot jcode itself
+        // only when its working state still equals a snapshot kcode itself
         // placed or exported here. Anything else is work that never came back.
         let scratch = tempfile::tempdir()?;
         let current = snapshot_worktree_tree(&root, scratch.path())?;
@@ -1745,7 +1745,7 @@ fn restore_repo(
         .unwrap_or_default();
         for refname in exported.lines() {
             let Some(other) = refname
-                .strip_prefix("refs/jcode-cloud/")
+                .strip_prefix("refs/kcode-cloud/")
                 .and_then(|rest| rest.strip_suffix("/outgoing"))
             else {
                 continue;
@@ -1775,7 +1775,7 @@ fn restore_repo(
                 .map(|d| d.as_secs())
                 .unwrap_or_default();
             let rescue_ref = format!("{SNAPSHOT_REF_PREFIX}/rescued/{stamp}-{session_id}");
-            let message = format!("jcode cloud: unreturned work rescued before {session_id}");
+            let message = format!("kcode cloud: unreturned work rescued before {session_id}");
             let mut args = vec!["commit-tree", current.as_str(), "-m", message.as_str()];
             let parent = git(&root, &["rev-parse", "--verify", "HEAD^{commit}"]).ok();
             if let Some(parent) = &parent {
@@ -1818,18 +1818,18 @@ fn refuse_unreturned(root: &Path, repo: &RepoManifest) -> Result<()> {
             .unwrap_or_default();
             let mut owners: Vec<&str> = owners
                 .lines()
-                .filter_map(|name| name.strip_prefix("refs/jcode-cloud/"))
+                .filter_map(|name| name.strip_prefix("refs/kcode-cloud/"))
                 .filter_map(|name| name.strip_suffix("/base"))
                 .collect();
             owners.sort_unstable();
             owners.dedup();
             let recovery = if owners.len() == 1 {
                 format!(
-                    "Run `jcode cloud return --session {}` locally to recover that session's work first",
+                    "Run `kcode cloud return --session {}` locally to recover that session's work first",
                     owners[0]
                 )
             } else {
-                "Run `jcode cloud where` to identify the earlier session, then `jcode cloud return --session <id>` locally to recover its work first".to_string()
+                "Run `kcode cloud where` to identify the earlier session, then `kcode cloud return --session <id>` locally to recover its work first".to_string()
             };
             bail!(
                 "{} on the cloud host has changes that were never returned; refusing to overwrite. {recovery}. No cloud working files were overwritten",
@@ -2115,7 +2115,7 @@ pub(crate) fn run_cli(command: super::args::CloudCommand) -> Result<()> {
         remote_binary: t.remote_binary,
         transport: t
             .transport
-            .or_else(|| std::env::var("JCODE_CLOUD_TRANSPORT").ok())
+            .or_else(|| std::env::var("KCODE_CLOUD_TRANSPORT").ok())
             .filter(|s| !s.trim().is_empty()),
     };
     match command {
@@ -2270,7 +2270,7 @@ pub(crate) fn run_cli(command: super::args::CloudCommand) -> Result<()> {
                     ),
                 };
                 println!(
-                    "Returned {} from `{}` ({} messages). Code: {merge}.\n  Resume: jcode --resume {}",
+                    "Returned {} from `{}` ({} messages). Code: {merge}.\n  Resume: kcode --resume {}",
                     report.session_id, report.host, report.messages, report.session_id
                 );
             }
@@ -2380,12 +2380,12 @@ fn exec_attach(
     command.arg("--ssh-binary").arg(target.remote_binary());
     if let Some(root) = repo_root {
         command.arg("--remote-working-dir").arg(root);
-        command.env("JCODE_SSH_LOCAL_WORKING_DIR", root);
+        command.env("KCODE_SSH_LOCAL_WORKING_DIR", root);
     }
     command.arg("--resume").arg(session_id);
     // The bridge still validates the original local lease and expiry. Attaching
     // does not create a new grant or extend the time granted by the migration.
-    command.env("JCODE_CLOUD_ENV_SESSION", session_id);
+    command.env("KCODE_CLOUD_ENV_SESSION", session_id);
     let error = crate::platform::replace_process(&mut command);
     bail!("failed to attach to `{host}`: {error}")
 }
@@ -2401,13 +2401,13 @@ fn resolve_session_id(session_ref: Option<&str>) -> Result<String> {
         }
         return session::find_session_by_name_or_id(reference);
     }
-    if let Ok(id) = std::env::var("JCODE_SESSION_ID")
+    if let Ok(id) = std::env::var("KCODE_SESSION_ID")
         && !id.trim().is_empty()
     {
         return Ok(id);
     }
     bail!(
-        "no session given: pass --session <id> (inside a jcode agent shell JCODE_SESSION_ID is used)"
+        "no session given: pass --session <id> (inside a kcode agent shell KCODE_SESSION_ID is used)"
     )
 }
 
@@ -2486,7 +2486,7 @@ fn append_arrival(sess: &mut session::Session, dangling: &[String], host: &str, 
         .map(|id| crate::message::ContentBlock::ToolResult {
             tool_use_id: id.clone(),
             content: format!(
-                "jcode cloud move completed. This session now runs on cloud host `{host}`. This tool call was interrupted by the move; rerun it here if its result still matters."
+                "kcode cloud move completed. This session now runs on cloud host `{host}`. This tool call was interrupted by the move; rerun it here if its result still matters."
             ),
             is_error: None,
         })
@@ -2550,7 +2550,7 @@ fn arrival_context(manifest: &MoveManifest) -> Vec<String> {
 
 fn arrival_notice(manifest: &MoveManifest) -> String {
     let mut lines = arrival_context(manifest);
-    lines.push("There is no local display, desktop, browser or ssh-agent on this host. Keep working on the task exactly where you left off. The user can bring the session back with /local (`jcode cloud return`). Git will merge your work with any local edits.".to_string());
+    lines.push("There is no local display, desktop, browser or ssh-agent on this host. Keep working on the task exactly where you left off. The user can bring the session back with /local (`kcode cloud return`). Git will merge your work with any local edits.".to_string());
     lines.push(crate::cloud_environment::migration_guidance(
         &manifest.session_id,
     ));
@@ -2559,7 +2559,7 @@ fn arrival_notice(manifest: &MoveManifest) -> String {
 
 fn describe_local_only_state(session_id: &str) -> Vec<String> {
     let mut items = Vec::new();
-    let dir = std::env::temp_dir().join("jcode-bg-tasks");
+    let dir = std::env::temp_dir().join("kcode-bg-tasks");
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -2615,7 +2615,7 @@ fn toolchain_hints(root: Option<&Path>) -> Vec<String> {
 }
 
 fn configured_mcp_servers() -> Vec<String> {
-    let Ok(dir) = storage::jcode_dir() else {
+    let Ok(dir) = storage::kcode_dir() else {
         return Vec::new();
     };
     let Ok(raw) = std::fs::read(dir.join("mcp.json")) else {
@@ -2632,7 +2632,7 @@ fn configured_mcp_servers() -> Vec<String> {
 }
 
 fn local_host_label() -> String {
-    std::env::var("JCODE_CLOUD_HOST_LABEL")
+    std::env::var("KCODE_CLOUD_HOST_LABEL")
         .ok()
         .filter(|s| !s.is_empty())
         .or_else(|| {
@@ -2645,13 +2645,13 @@ fn local_host_label() -> String {
 }
 
 fn todo_file(session_id: &str) -> Result<PathBuf> {
-    Ok(storage::jcode_dir()?
+    Ok(storage::kcode_dir()?
         .join("todos")
         .join(format!("{session_id}.json")))
 }
 
 fn inbox_dir() -> Result<PathBuf> {
-    Ok(storage::jcode_dir()?.join("cloud_inbox"))
+    Ok(storage::kcode_dir()?.join("cloud_inbox"))
 }
 
 fn copy_if_exists(from: &Path, to: &Path) -> Result<()> {
@@ -2713,7 +2713,7 @@ fn shell_quote(value: &str) -> String {
 }
 
 fn step(phase: &str, detail: &str) {
-    if std::env::var_os("JCODE_CLOUD_QUIET").is_none() {
+    if std::env::var_os("KCODE_CLOUD_QUIET").is_none() {
         eprintln!("[cloud {phase}] {detail}");
     }
 }
@@ -2750,18 +2750,18 @@ fn handoff_command(handoff: crate::tui::CloudHandoff) -> Result<Command> {
     let mut command = Command::new(&exe);
     // Never inherit the previous SSH attach identity.
     for var in [
-        "JCODE_SSH_REMOTE",
-        "JCODE_SSH_BINARY",
-        "JCODE_SSH_WORKING_DIR",
-        "JCODE_SSH_SERVER_SOCKET",
-        "JCODE_SSH_LOCAL_WORKING_DIR",
-        "JCODE_SSH_LOCAL_IS_SOURCE",
-        "JCODE_SSH_LAST_TRANSFER_AT",
-        "JCODE_SSH_CONFIG",
-        "JCODE_SOCKET",
-        "JCODE_CLOUD_HANDOFF_PREVIEW_SESSION",
-        "JCODE_CLOUD_ENV_SESSION",
-        "JCODE_CLOUD_CONTINUE_MESSAGE",
+        "KCODE_SSH_REMOTE",
+        "KCODE_SSH_BINARY",
+        "KCODE_SSH_WORKING_DIR",
+        "KCODE_SSH_SERVER_SOCKET",
+        "KCODE_SSH_LOCAL_WORKING_DIR",
+        "KCODE_SSH_LOCAL_IS_SOURCE",
+        "KCODE_SSH_LAST_TRANSFER_AT",
+        "KCODE_SSH_CONFIG",
+        "KCODE_SOCKET",
+        "KCODE_CLOUD_HANDOFF_PREVIEW_SESSION",
+        "KCODE_CLOUD_ENV_SESSION",
+        "KCODE_CLOUD_CONTINUE_MESSAGE",
     ] {
         command.env_remove(var);
     }
@@ -2778,21 +2778,21 @@ fn handoff_command(handoff: crate::tui::CloudHandoff) -> Result<Command> {
             working_dir,
         } => {
             command.arg("--ssh").arg(&host);
-            if let Ok(binary) = std::env::var("JCODE_CLOUD_REMOTE_BINARY") {
+            if let Ok(binary) = std::env::var("KCODE_CLOUD_REMOTE_BINARY") {
                 command.arg("--ssh-binary").arg(binary);
             }
             if let Some(dir) = working_dir {
                 command.arg("--remote-working-dir").arg(&dir);
-                command.env("JCODE_SSH_LOCAL_WORKING_DIR", &dir);
+                command.env("KCODE_SSH_LOCAL_WORKING_DIR", &dir);
             }
             command.arg("--resume").arg(&session_id);
             // Only an explicit handoff may preview the matching local transcript.
-            command.env("JCODE_CLOUD_HANDOFF_PREVIEW_SESSION", &session_id);
+            command.env("KCODE_CLOUD_HANDOFF_PREVIEW_SESSION", &session_id);
             if just_migrated {
-                command.env("JCODE_CLOUD_ENV_SESSION", &session_id);
+                command.env("KCODE_CLOUD_ENV_SESSION", &session_id);
                 command.env(
-                    "JCODE_CLOUD_CONTINUE_MESSAGE",
-                    "[jcode cloud] This session just moved to the cloud host. Read the migration notice above, verify the environment you need is here, then continue the task exactly where you left off.",
+                    "KCODE_CLOUD_CONTINUE_MESSAGE",
+                    "[kcode cloud] This session just moved to the cloud host. Read the migration notice above, verify the environment you need is here, then continue the task exactly where you left off.",
                 );
             }
         }
@@ -2828,9 +2828,9 @@ mod resume_handoff_tests {
                 .any(|pair| pair == ["--resume", "session_cloud_123"])
         );
         for name in [
-            "JCODE_CLOUD_CONTINUE_MESSAGE",
-            "JCODE_CLOUD_ENV_SESSION",
-            "JCODE_SOCKET",
+            "KCODE_CLOUD_CONTINUE_MESSAGE",
+            "KCODE_CLOUD_ENV_SESSION",
+            "KCODE_SOCKET",
         ] {
             assert!(
                 command
@@ -2851,7 +2851,7 @@ mod resume_handoff_tests {
         assert!(
             command
                 .get_envs()
-                .any(|(key, value)| key == "JCODE_CLOUD_CONTINUE_MESSAGE" && value.is_some())
+                .any(|(key, value)| key == "KCODE_CLOUD_CONTINUE_MESSAGE" && value.is_some())
         );
     }
 }

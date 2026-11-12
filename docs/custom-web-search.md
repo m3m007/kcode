@@ -2,7 +2,7 @@
 
 For the built-in Kagi backend, see [Kagi web search](kagi-web-search.md).
 
-Configure any HTTP endpoint returning JSON in `~/.jcode/config.toml`:
+Configure any HTTP endpoint returning JSON in `~/.kcode/config.toml`:
 
 ```toml
 [websearch]

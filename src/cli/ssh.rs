@@ -36,13 +36,13 @@ fn client_reload_command(
     }
     // The previous terminal was fully restored and the adapter socket died
     // with its SSH guard. The fresh process must create both again.
-    command.env_remove("JCODE_RESUMING");
-    command.env_remove("JCODE_SOCKET");
+    command.env_remove("KCODE_RESUMING");
+    command.env_remove("KCODE_SOCKET");
     // run_unix caches the client cwd in this variable even when it was not
     // explicitly authorized as a local source. Do not promote that cached
     // fallback into explicit migration authority on reload.
-    if std::env::var("JCODE_SSH_LOCAL_IS_SOURCE").as_deref() != Ok("1") {
-        command.env_remove("JCODE_SSH_LOCAL_WORKING_DIR");
+    if std::env::var("KCODE_SSH_LOCAL_IS_SOURCE").as_deref() != Ok("1") {
+        command.env_remove("KCODE_SSH_LOCAL_WORKING_DIR");
     }
     command
 }
@@ -106,7 +106,7 @@ async fn run_unix(args: Args) -> Result<()> {
         .ssh
         .as_deref()
         .context("SSH dispatch requires a host")?;
-    let binary = args.ssh_binary.as_deref().unwrap_or("jcode");
+    let binary = args.ssh_binary.as_deref().unwrap_or("kcode");
     if let Some(id) = super::cloud_ephemeral::host_id(host) {
         let id = id.to_owned();
         tokio::task::spawn_blocking(move || super::cloud_ephemeral::wait_ready(&id))
@@ -124,31 +124,31 @@ async fn run_unix(args: Args) -> Result<()> {
     let working_dir = connection.remote_working_dir().to_owned();
     // The TUI stays local. Preserve its workspace separately from the VM's,
     // and share the exact managed-host config with read-only metadata probes.
-    let explicit_source = std::env::var_os("JCODE_SSH_LOCAL_WORKING_DIR").is_some();
+    let explicit_source = std::env::var_os("KCODE_SSH_LOCAL_WORKING_DIR").is_some();
     crate::env::set_var(
-        "JCODE_SSH_LOCAL_IS_SOURCE",
+        "KCODE_SSH_LOCAL_IS_SOURCE",
         if explicit_source { "1" } else { "0" },
     );
-    if let Some(local_dir) = std::env::var_os("JCODE_SSH_LOCAL_WORKING_DIR")
+    if let Some(local_dir) = std::env::var_os("KCODE_SSH_LOCAL_WORKING_DIR")
         .map(std::path::PathBuf::from)
         .or_else(|| std::env::current_dir().ok())
     {
-        crate::env::set_var("JCODE_SSH_LOCAL_WORKING_DIR", local_dir);
+        crate::env::set_var("KCODE_SSH_LOCAL_WORKING_DIR", local_dir);
     }
     if let Some(id) = super::cloud_ephemeral::host_id(host) {
         crate::env::set_var(
-            "JCODE_SSH_CONFIG",
+            "KCODE_SSH_CONFIG",
             super::cloud_ephemeral::ssh_config_path(id)?,
         );
     } else if super::cloud_managed::is_managed(host) {
         let _ = super::cloud_managed::ssh_args()?;
-        crate::env::set_var("JCODE_SSH_CONFIG", super::cloud_managed::ssh_config_path()?);
+        crate::env::set_var("KCODE_SSH_CONFIG", super::cloud_managed::ssh_config_path()?);
     } else {
-        crate::env::remove_var("JCODE_SSH_CONFIG");
+        crate::env::remove_var("KCODE_SSH_CONFIG");
     }
-    crate::env::set_var("JCODE_SSH_REMOTE", host);
-    crate::env::set_var("JCODE_SSH_BINARY", binary);
-    crate::env::set_var("JCODE_SSH_WORKING_DIR", &working_dir);
+    crate::env::set_var("KCODE_SSH_REMOTE", host);
+    crate::env::set_var("KCODE_SSH_BINARY", binary);
+    crate::env::set_var("KCODE_SSH_WORKING_DIR", &working_dir);
     // The local migration lease is the source of truth for the last transfer.
     // Do not reuse a timestamp from a previous attachment or another host.
     let lease = args
@@ -156,14 +156,14 @@ async fn run_unix(args: Args) -> Result<()> {
         .as_deref()
         .and_then(crate::storage::read_session_lease);
     if let Some(timestamp) = last_transfer_for_host(host, lease.as_ref()) {
-        crate::env::set_var("JCODE_SSH_LAST_TRANSFER_AT", timestamp);
+        crate::env::set_var("KCODE_SSH_LAST_TRANSFER_AT", timestamp);
     } else {
-        crate::env::remove_var("JCODE_SSH_LAST_TRANSFER_AT");
+        crate::env::remove_var("KCODE_SSH_LAST_TRANSFER_AT");
     }
     if let Some(socket) = args.ssh_server_socket.as_deref() {
-        crate::env::set_var("JCODE_SSH_SERVER_SOCKET", socket);
+        crate::env::set_var("KCODE_SSH_SERVER_SOCKET", socket);
     } else {
-        crate::env::remove_var("JCODE_SSH_SERVER_SOCKET");
+        crate::env::remove_var("KCODE_SSH_SERVER_SOCKET");
     }
     if matches!(args.command, Some(Command::SelfDev { .. })) {
         crate::env::set_var(super::selfdev::CLIENT_SELFDEV_ENV, "1");
@@ -244,12 +244,12 @@ fn last_transfer_for_host<'a>(
 
 /// Return a remote-aware resume command, never a local session lookup.
 pub(crate) fn resume_hint(session_id: &str) -> Option<String> {
-    let host = std::env::var("JCODE_SSH_REMOTE").ok()?;
-    let mut args = vec!["jcode".to_string(), "--ssh".to_string(), quote(&host)];
+    let host = std::env::var("KCODE_SSH_REMOTE").ok()?;
+    let mut args = vec!["kcode".to_string(), "--ssh".to_string(), quote(&host)];
     for (flag, variable) in [
-        ("--ssh-binary", "JCODE_SSH_BINARY"),
-        ("--ssh-server-socket", "JCODE_SSH_SERVER_SOCKET"),
-        ("--remote-working-dir", "JCODE_SSH_WORKING_DIR"),
+        ("--ssh-binary", "KCODE_SSH_BINARY"),
+        ("--ssh-server-socket", "KCODE_SSH_SERVER_SOCKET"),
+        ("--remote-working-dir", "KCODE_SSH_WORKING_DIR"),
     ] {
         if let Ok(value) = std::env::var(variable) {
             args.extend([flag.to_owned(), quote(&value)]);
@@ -270,11 +270,11 @@ mod tests {
     #[test]
     fn ssh_client_reload_preserves_remote_transport_and_workspace() {
         let args = Args::try_parse_from([
-            "jcode",
+            "kcode",
             "--ssh",
             "dev",
             "--ssh-binary",
-            "/opt/jcode",
+            "/opt/kcode",
             "--ssh-server-socket",
             "/run/remote.sock",
             "--resume",
@@ -283,7 +283,7 @@ mod tests {
         ])
         .unwrap();
         let command = client_reload_command(
-            std::path::Path::new("/local/new-jcode"),
+            std::path::Path::new("/local/new-kcode"),
             &args,
             "session_remote",
             "/vm/project space",
@@ -292,11 +292,11 @@ mod tests {
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect::<Vec<_>>();
-        let parsed = Args::try_parse_from(std::iter::once("jcode".to_owned()).chain(argv)).unwrap();
+        let parsed = Args::try_parse_from(std::iter::once("kcode".to_owned()).chain(argv)).unwrap();
         validate(&parsed).unwrap();
-        assert_eq!(command.get_program(), "/local/new-jcode");
+        assert_eq!(command.get_program(), "/local/new-kcode");
         assert_eq!(parsed.ssh.as_deref(), Some("dev"));
-        assert_eq!(parsed.ssh_binary.as_deref(), Some("/opt/jcode"));
+        assert_eq!(parsed.ssh_binary.as_deref(), Some("/opt/kcode"));
         assert_eq!(
             parsed.ssh_server_socket.as_deref(),
             Some("/run/remote.sock")
@@ -313,18 +313,18 @@ mod tests {
         assert!(
             command
                 .get_envs()
-                .any(|(key, value)| key == "JCODE_RESUMING" && value.is_none())
+                .any(|(key, value)| key == "KCODE_RESUMING" && value.is_none())
         );
         assert!(
             command
                 .get_envs()
-                .any(|(key, value)| key == "JCODE_SOCKET" && value.is_none())
+                .any(|(key, value)| key == "KCODE_SOCKET" && value.is_none())
         );
-        if std::env::var("JCODE_SSH_LOCAL_IS_SOURCE").as_deref() != Ok("1") {
+        if std::env::var("KCODE_SSH_LOCAL_IS_SOURCE").as_deref() != Ok("1") {
             assert!(
                 command
                     .get_envs()
-                    .any(|(key, value)| key == "JCODE_SSH_LOCAL_WORKING_DIR" && value.is_none())
+                    .any(|(key, value)| key == "KCODE_SSH_LOCAL_WORKING_DIR" && value.is_none())
             );
         }
     }
@@ -356,9 +356,9 @@ mod tests {
     #[test]
     fn remote_modes_accept_explicit_remote_ids_without_local_lookup() {
         for argv in [
-            vec!["jcode", "--ssh", "dev"],
+            vec!["kcode", "--ssh", "dev"],
             vec![
-                "jcode",
+                "kcode",
                 "--ssh",
                 "dev",
                 "--resume",
@@ -380,7 +380,7 @@ mod tests {
             vec!["--onboarding-sim"],
             vec!["--tools", "bash"],
         ] {
-            let mut argv = vec!["jcode", "--ssh", "dev"];
+            let mut argv = vec!["kcode", "--ssh", "dev"];
             argv.extend(tail);
             assert!(validate(&Args::try_parse_from(argv).unwrap()).is_err());
         }
@@ -390,18 +390,18 @@ mod tests {
     fn resume_hint_retains_remote_identity_and_quotes_paths() {
         let _lock = crate::storage::lock_test_env();
         let names = [
-            "JCODE_SSH_REMOTE",
-            "JCODE_SSH_BINARY",
-            "JCODE_SSH_WORKING_DIR",
-            "JCODE_SSH_SERVER_SOCKET",
+            "KCODE_SSH_REMOTE",
+            "KCODE_SSH_BINARY",
+            "KCODE_SSH_WORKING_DIR",
+            "KCODE_SSH_SERVER_SOCKET",
             super::super::selfdev::CLIENT_SELFDEV_ENV,
         ];
         let previous: Vec<_> = names.iter().map(std::env::var_os).collect();
         for name in names {
             crate::env::remove_var(name);
         }
-        crate::env::set_var("JCODE_SSH_REMOTE", "dev");
-        crate::env::set_var("JCODE_SSH_WORKING_DIR", "/srv/sam's repo");
+        crate::env::set_var("KCODE_SSH_REMOTE", "dev");
+        crate::env::set_var("KCODE_SSH_WORKING_DIR", "/srv/sam's repo");
         let hint = resume_hint("session_remote_1").unwrap();
         assert!(hint.contains("--ssh 'dev'"));
         assert!(hint.contains("'/srv/sam'\\''s repo'"));

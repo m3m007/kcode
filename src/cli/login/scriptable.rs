@@ -198,7 +198,7 @@ pub(super) async fn start_scriptable_login(
         }
         LoginProviderTarget::Google => {
             let creds = auth::google::load_credentials().context(
-                "Google/Gmail scriptable auth requires saved OAuth credentials first. Run `jcode login --provider google` once or save google credentials manually.",
+                "Google/Gmail scriptable auth requires saved OAuth credentials first. Run `kcode login --provider google` once or save google credentials manually.",
             )?;
             let tier = options
                 .google_access_tier
@@ -308,7 +308,7 @@ pub(super) async fn start_scriptable_login(
     // provider functions. Keep stdout machine-readable and never add a QR to
     // JSON output, but offer it on stderr for human-readable headless login.
     if !options.json
-        && let Some(qr) = jcode_terminal_prompt::qr::indented_section(
+        && let Some(qr) = kcode_terminal_prompt::qr::indented_section(
             &auth_url,
             "Scan this QR on another device to sign in:",
             "    ",
@@ -422,7 +422,7 @@ pub(super) async fn complete_scriptable_claude_login(
             status: "authenticated",
             provider: provider_id.to_string(),
             account_label: Some(account_label.clone()),
-            credentials_path: Some(auth::claude::jcode_path()?.display().to_string()),
+            credentials_path: Some(auth::claude::kcode_path()?.display().to_string()),
             email: profile_email.clone(),
         },
     )?;
@@ -431,7 +431,7 @@ pub(super) async fn complete_scriptable_claude_login(
         eprintln!(
             "Account '{}' stored at {}",
             account_label,
-            auth::claude::jcode_path()?.display()
+            auth::claude::kcode_path()?.display()
         );
         if let Some(email) = profile_email {
             eprintln!("Profile email: {}", email);
@@ -474,7 +474,7 @@ pub(super) async fn complete_scriptable_openai_login(
     auth::oauth::save_openai_tokens_for_account(&tokens, &account_label)?;
     clear_pending_login(&pending_path);
     crate::telemetry::record_auth_success(provider_id, "oauth");
-    let credentials_path = crate::storage::jcode_dir()?.join("openai-auth.json");
+    let credentials_path = crate::storage::kcode_dir()?.join("openai-auth.json");
     emit_scriptable_auth_success(
         options.json,
         ScriptableAuthSuccess {
@@ -618,7 +618,7 @@ pub(super) async fn complete_scriptable_google_login(
         }
     };
     let creds = auth::google::load_credentials().context(
-        "Google/Gmail completion requires saved OAuth credentials first. Run `jcode login --provider google` once or save google credentials manually.",
+        "Google/Gmail completion requires saved OAuth credentials first. Run `kcode login --provider google` once or save google credentials manually.",
     )?;
     let tokens = auth::google::exchange_callback_input(
         &creds,
@@ -908,7 +908,7 @@ pub(super) fn cancel_scoped_pending_login(path: &Path) -> Result<()> {
 }
 
 pub(super) fn pending_login_dir() -> Result<PathBuf> {
-    Ok(crate::storage::jcode_dir()?.join("pending-login"))
+    Ok(crate::storage::kcode_dir()?.join("pending-login"))
 }
 
 pub(super) fn require_scriptable_input(
@@ -921,7 +921,7 @@ pub(super) fn load_pending_login(path: &Path, provider: &str) -> Result<PendingS
     check_cancellation_marker(path)?;
     if !path.exists() {
         anyhow::bail!(
-            "No pending {} login state found. Run `jcode login --provider {} --print-auth-url` first.",
+            "No pending {} login state found. Run `kcode login --provider {} --print-auth-url` first.",
             provider,
             provider
         );
@@ -938,7 +938,7 @@ pub(super) fn load_pending_login(path: &Path, provider: &str) -> Result<PendingS
         if record.expires_at_ms <= current_time_ms() {
             clear_pending_login(path);
             anyhow::bail!(
-                "Pending {} login state expired. Run `jcode login --provider {} --print-auth-url` again.",
+                "Pending {} login state expired. Run `kcode login --provider {} --print-auth-url` again.",
                 provider,
                 provider
             );
@@ -1061,14 +1061,14 @@ pub(super) fn scriptable_resume_command(
     match input_kind {
         "callback_url" => {
             format!(
-                "jcode login --provider {} --callback-url '<url-or-query>'",
+                "kcode login --provider {} --callback-url '<url-or-query>'",
                 provider
             )
         }
-        "auth_code" => format!("jcode login --provider {} --auth-code '<code>'", provider),
-        "complete" => format!("jcode login --provider {} --complete", provider),
+        "auth_code" => format!("kcode login --provider {} --auth-code '<code>'", provider),
+        "complete" => format!("kcode login --provider {} --complete", provider),
         _ => format!(
-            "jcode login --provider {} --callback-url '<url>'  # or --auth-code '<code>'",
+            "kcode login --provider {} --callback-url '<url>'  # or --auth-code '<code>'",
             provider
         ),
     }

@@ -34,7 +34,7 @@ Unknown fields, absolute paths, traversal, symlinks and reserved control paths
 are rejected. Requests are limited to 8 KiB. `reason` is optional, bounded
 metadata. It is not persisted or reflected in status output. Do not include
 secrets in it. Environment injection controls such as `PATH`, `HOME`, `LD_*`,
-`BASH_ENV`, `SSH_*`, and `JCODE_*` are denied.
+`BASH_ENV`, `SSH_*`, and `KCODE_*` are denied.
 
 The credential allowlist is fixed:
 
@@ -45,13 +45,13 @@ The credential allowlist is fixed:
 | `npm` | `.npmrc` |
 
 There is no arbitrary home-file or keychain access and no SSH private-key
-transfer. Project files must be inside the repository, not Git or Jcode control
+transfer. Project files must be inside the repository, not Git or Kcode control
 metadata. Missing AWS components may be omitted, but at least one must exist.
 
 ## Temporary callback after handoff
 
 A supporting local TUI may grant scoped access after a session handoff. The
-local machine's `~/.jcode/config.toml` controls the lifetime from handoff:
+local machine's `~/.kcode/config.toml` controls the lifetime from handoff:
 
 ```toml
 [cloud]
@@ -65,11 +65,11 @@ sessions still revokes access. Ordinary resumes do not create a new grant.
 This is conditional, not guaranteed availability. The TUI invokes:
 
 ```text
-jcode --no-update --no-selfdev cloud env fulfill --session SESSION_ID
+kcode --no-update --no-selfdev cloud env fulfill --session SESSION_ID
 ```
 
 The request is read from stdin, not a command argument. The caller must set both
-`JCODE_CLOUD_ENV_SESSION=SESSION_ID` and `JCODE_SSH_REMOTE` to the lease's exact
+`KCODE_CLOUD_ENV_SESSION=SESSION_ID` and `KCODE_SSH_REMOTE` to the lease's exact
 destination. The command rejects missing, returned, stale, zero-epoch, future,
 or expired leases and invalid repository roots. The receiver independently
 requires the same session epoch and repository to be owned on the remote host.
@@ -95,15 +95,15 @@ local and should run this command itself with its local tools when available,
 not ask the user to perform work it can do:
 
 ```sh
-jcode cloud env push --host my-cloud --request '{"action":"fetch","resource":{"kind":"credential","name":"github"}}'
-jcode cloud env push --host my-cloud --request '{"action":"sync"}'
+kcode cloud env push --host my-cloud --request '{"action":"fetch","resource":{"kind":"credential","name":"github"}}'
+kcode cloud env push --host my-cloud --request '{"action":"sync"}'
 ```
 
 The checkout uses the same absolute repository path on both machines. SSH uses
 the existing cloud target configuration. Values travel only over private SSH
 stdin into hidden `cloud env receive`, never in argv, session archives, temporary
 payload files, logs, or stdout. Remote stderr is discarded. Transport I/O has a
-30-second deadline. Fulfillment honors the TUI's `JCODE_SSH_BINARY` and remains
+30-second deadline. Fulfillment honors the TUI's `KCODE_SSH_BINARY` and remains
 inside its disconnect-cancellation process group. The private payload
 is versioned, bounded to 4 MiB including encoding, and validates every source,
 resource, decoded value and destination before beginning writes.
@@ -148,7 +148,7 @@ serialization does not suppress network transfers or cache authorization, and
 each receive revalidates its own lease. It also does not make multi-file writes
 transactional. No secrets or free-text reasons are used as lock names.
 
-`.jcode/cloud-environment.json` contains only typed resource identifiers:
+`.kcode/cloud-environment.json` contains only typed resource identifiers:
 
 ```json
 {
@@ -166,7 +166,7 @@ requirements. At most 128 requirements are accepted. Values and free-text
 reasons are never stored in this manifest. Names and paths are metadata and may
 still be sensitive in your organization, so review them before committing.
 
-Environment values are stored privately outside the repository under the Jcode
+Environment values are stored privately outside the repository under the Kcode
 state directory, keyed by canonical repository root, so loads from nested working
 directories see the same values. Stored values are checked again for NUL bytes
 and size limits. Manifest and environment read-modify-write operations use

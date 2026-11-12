@@ -2,10 +2,10 @@
 # Real native SSH + TUI + daemon acceptance. Only model responses are synthetic.
 # Never reads the operator's auth/config or mutates their daemon/workspace.
 set -euo pipefail
-: "${JCODE_BIN:?Set JCODE_BIN to the rebuilt binary}"
-JCODE_BIN=$(realpath "$JCODE_BIN")
+: "${KCODE_BIN:?Set KCODE_BIN to the rebuilt binary}"
+KCODE_BIN=$(realpath "$KCODE_BIN")
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-# Viewer intentionally refuses all paths beneath .jcode, including agent scratch.
+# Viewer intentionally refuses all paths beneath .kcode, including agent scratch.
 # These small, short-lived fixtures therefore live in the private runtime directory.
 W=$(mktemp -d "${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/ssh-slash-workflows.XXXXXX")
 for prerequisite in ssh sshd ssh-keygen tmux python3; do
@@ -25,8 +25,8 @@ cleanup() {
     tmux -S "$TMUX_SOCK" kill-server 2>/dev/null || true
     [[ ! -f $W/ssh/pid ]] || kill "$(cat "$W/ssh/pid")" 2>/dev/null || true
     [[ -z ${MODEL_PID:-} ]] || kill "$MODEL_PID" 2>/dev/null || true
-    env -i PATH="$PATH" HOME="$W/remote-home" JCODE_HOME="$W/remote-home/.jcode" \
-        JCODE_RUNTIME_DIR="$W/remote-run" "$JCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
+    env -i PATH="$PATH" HOME="$W/remote-home" KCODE_HOME="$W/remote-home/.kcode" \
+        KCODE_RUNTIME_DIR="$W/remote-run" "$KCODE_BIN" --no-update server stop >/dev/null 2>&1 || true
     echo "Acceptance artifacts: $W"
 }
 trap cleanup EXIT
@@ -52,10 +52,10 @@ EOF
 cat > "$W/remote-shell" <<EOF
 #!/bin/sh
 exec env -i PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 HOME='$W/remote-home' \\
- JCODE_HOME='$W/remote-home/.jcode' JCODE_RUNTIME_DIR='$W/remote-run' \\
- JCODE_NO_TELEMETRY=1 JCODE_NO_AUTO_UPDATE=1 JCODE_NON_INTERACTIVE=1 \\
- JCODE_OPENAI_COMPAT_API_BASE='http://127.0.0.1:$MODEL_PORT/v1' \\
- OPENAI_COMPAT_API_KEY=fixture-only JCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model \\
+ KCODE_HOME='$W/remote-home/.kcode' KCODE_RUNTIME_DIR='$W/remote-run' \\
+ KCODE_NO_TELEMETRY=1 KCODE_NO_AUTO_UPDATE=1 KCODE_NON_INTERACTIVE=1 \\
+ KCODE_OPENAI_COMPAT_API_BASE='http://127.0.0.1:$MODEL_PORT/v1' \\
+ OPENAI_COMPAT_API_KEY=fixture-only KCODE_OPENAI_COMPAT_DEFAULT_MODEL=fake-model \\
  /bin/bash -c "\${SSH_ORIGINAL_COMMAND:?}"
 EOF
 chmod +x "$W/bin/ssh" "$W/remote-shell"
@@ -81,13 +81,13 @@ grep -Fq fixture-ready "$W/probe" || fail 'real SSH authentication failed'
 printf 'host-file-sentinel\n' > "$W/project/host.txt"
 printf 'client-file-sentinel\n' > "$W/local-project/host.txt"
 # Different client bytes prove commands did not accidentally use laptop paths.
-mkdir -p "$W/local-home/.jcode"
-printf '[display]\ncentered = false\n' > "$W/local-home/.jcode/config.toml"
-cp "$W/local-home/.jcode/config.toml" "$W/local-config-before"
+mkdir -p "$W/local-home/.kcode"
+printf '[display]\ncentered = false\n' > "$W/local-home/.kcode/config.toml"
+cp "$W/local-home/.kcode/config.toml" "$W/local-config-before"
 printf -v launch '%q ' env -i "PATH=$W/bin:/usr/local/bin:/usr/bin:/bin" LANG=C.UTF-8 \
-    TERM=xterm-256color "HOME=$W/local-home" "JCODE_HOME=$W/local-home/.jcode" \
-    "JCODE_RUNTIME_DIR=$W/local-run" JCODE_NO_TELEMETRY=1 JCODE_NO_AUTO_UPDATE=1 \
-    "$JCODE_BIN" --no-update --no-selfdev --ssh slash-fixture --ssh-binary "$JCODE_BIN" \
+    TERM=xterm-256color "HOME=$W/local-home" "KCODE_HOME=$W/local-home/.kcode" \
+    "KCODE_RUNTIME_DIR=$W/local-run" KCODE_NO_TELEMETRY=1 KCODE_NO_AUTO_UPDATE=1 \
+    "$KCODE_BIN" --no-update --no-selfdev --ssh slash-fixture --ssh-binary "$KCODE_BIN" \
     --remote-working-dir "$W/project"
 printf -v local_workspace '%q' "$W/local-project"
 tmux -S "$TMUX_SOCK" -f /dev/null new-session -d -s workflows -x 160 -y 55 "cd $local_workspace && exec $launch"
@@ -105,7 +105,7 @@ command_ui() {
     tmux -S "$TMUX_SOCK" send-keys -t workflows Enter
     wait_for "$2"
     cp "$W/frame.txt" "$W/frames/$3.txt"
-    echo "JCODE_CHECKPOINT {\"message\":\"$3 verified\"}"
+    echo "KCODE_CHECKPOINT {\"message\":\"$3 verified\"}"
 }
 wait_for 'api-key:openai-compatible'
 command_ui '/file host.txt' 'host-file-sentinel' host-file
@@ -121,7 +121,7 @@ command_ui '/save ssh-workflow-bookmark' 'ssh-workflow-bookmark' bookmark
 command_ui '/sessions saved' 'Remote sessions' sessions
 PARENT=$(python3 - "$W" <<'PY'
 import json, pathlib, sys
-for p in (pathlib.Path(sys.argv[1])/'remote-home/.jcode/sessions').glob('*.json'):
+for p in (pathlib.Path(sys.argv[1])/'remote-home/.kcode/sessions').glob('*.json'):
     s=json.loads(p.read_text())
     if s.get('saved'): print(s['id']); break
 else: raise AssertionError('bookmark was not persisted on the host')
@@ -133,7 +133,7 @@ CHILD=''
 for ((i=0; i<120; i++)); do
     CHILD=$(python3 - "$W" "$PARENT" <<'PY'
 import json, pathlib, sys
-for p in (pathlib.Path(sys.argv[1])/'remote-home/.jcode/sessions').glob('*.json'):
+for p in (pathlib.Path(sys.argv[1])/'remote-home/.kcode/sessions').glob('*.json'):
     s=json.loads(p.read_text())
     if s.get('parent_id') == sys.argv[2]: print(s['id']); break
 PY
@@ -181,7 +181,7 @@ done
 # Wait for the new client's transport bootstrap, not the previous screen contents.
 BOOTSTRAPPED=false
 for ((i=0; i<120; i++)); do
-    if grep -Fq 'resumed=true, request=subscribe_resume' "$W/local-home/.jcode/logs/"*.log; then
+    if grep -Fq 'resumed=true, request=subscribe_resume' "$W/local-home/.kcode/logs/"*.log; then
         BOOTSTRAPPED=true
         break
     fi
@@ -191,26 +191,26 @@ done
 wait_for '[workflow] ack.'
 command_ui '/file host.txt' 'host-file-sentinel' after-reload
 command_ui '/session' "$PARENT" reload-identity
-cmp "$W/local-config-before" "$W/local-home/.jcode/config.toml" || fail 'client config mutated'
+cmp "$W/local-config-before" "$W/local-home/.kcode/config.toml" || fail 'client config mutated'
 python3 - "$W" <<'PY'
 import json, pathlib, sys, tomllib
 w = pathlib.Path(sys.argv[1])
-config = tomllib.loads((w/'remote-home/.jcode/config.toml').read_text())
+config = tomllib.loads((w/'remote-home/.kcode/config.toml').read_text())
 assert config['display']['centered'] is True, config
 assert config['provider']['default_model'] == 'fake-model', config
 assert config['provider']['openai_service_tier'] == 'off', config
-assert (w/'project/.jcode/swarm-prompt.md').read_text() == 'isolated-prompt-marker'
-loop_files = list((w/'remote-home/.jcode/remote-loops').glob('*.json'))
+assert (w/'project/.kcode/swarm-prompt.md').read_text() == 'isolated-prompt-marker'
+loop_files = list((w/'remote-home/.kcode/remote-loops').glob('*.json'))
 assert loop_files, 'workflow state was not persisted'
 assert all(not json.loads(p.read_text()).get('workflow', {}).get('active', False) for p in loop_files)
-assert any('isolated-log-marker' in p.read_text() for p in (w/'remote-home/.jcode/logs').glob('*.log'))
-sessions = [json.loads(p.read_text()) for p in (w/'remote-home/.jcode/sessions').glob('*.json')]
+assert any('isolated-log-marker' in p.read_text() for p in (w/'remote-home/.kcode/logs').glob('*.log'))
+sessions = [json.loads(p.read_text()) for p in (w/'remote-home/.kcode/sessions').glob('*.json')]
 assert any(s.get('parent_id') for s in sessions), 'fork did not persist a remote child'
 assert (w/'model.log').exists(), 'workflow never reached the model'
 rows = [json.loads(line) for line in (w/'model.log').read_text().splitlines()]
 assert any('isolated-workflow-marker' in json.dumps(row) for row in rows), rows
 assert sum(row['agent'] for row in rows) == 1, 'control commands accidentally started another model turn'
 assert (w/'local-project/host.txt').read_text() == 'client-file-sentinel\n'
-assert not list((w/'local-home/.jcode/sessions').glob('*.json')), 'remote sessions saved locally'
+assert not list((w/'local-home/.kcode/sessions').glob('*.json')), 'remote sessions saved locally'
 PY
 printf 'PASS: native SSH account, host config/file, session navigation/bookmark, loop/recovery and client reload workflows\n'

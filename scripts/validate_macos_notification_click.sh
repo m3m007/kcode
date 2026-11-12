@@ -1,5 +1,5 @@
 #!/bin/bash
-# Prove that clicking a jcode notification focuses the terminal, not Script Editor.
+# Prove that clicking a kcode notification focuses the terminal, not Script Editor.
 #
 # This exists because manual checks are unreliable: banners auto-dismiss, and
 # "AppleScript can activate Ghostty" does not prove "clicking the banner does".
@@ -14,10 +14,10 @@
 # Exit 0 means the click is genuinely wired to the terminal.
 set -uo pipefail
 
-APP_DIR="${JCODE_NOTIFIER_APP_DIR:-$HOME/Applications/Jcode Notifier.app}"
-HELPER="$APP_DIR/Contents/MacOS/jcode-notifier"
+APP_DIR="${KCODE_NOTIFIER_APP_DIR:-$HOME/Applications/Jcode Notifier.app}"
+HELPER="$APP_DIR/Contents/MacOS/kcode-notifier"
 TARGET_BUNDLE_ID="${1:-${__CFBundleIdentifier:-com.apple.Terminal}}"
-PROBE_FILE="$(mktemp "${TMPDIR:-/tmp}/jcode-notify-probe.XXXXXX")"
+PROBE_FILE="$(mktemp "${TMPDIR:-/tmp}/kcode-notify-probe.XXXXXX")"
 DECOY_APP="Finder"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -43,9 +43,9 @@ echo "frontmost before: $BEFORE"
 [[ "$BEFORE" == "$DECOY_APP" ]] || echo "warn: decoy not frontmost (got $BEFORE)"
 
 # 2. Post via the bundle. It stays resident so the click lands in-process.
-pkill -f "jcode-notifier --post" >/dev/null 2>&1
+pkill -f "kcode-notifier --post" >/dev/null 2>&1
 open -a "$APP_DIR" --args --post \
-  --title "jcode: validation" \
+  --title "kcode: validation" \
   --subtitle "automated click test" \
   --body "This banner is clicked automatically." \
   --sound Glass \
@@ -56,7 +56,7 @@ sleep 3
 # 3. Click the banner through Accessibility.
 # macOS bash 3.2 mis-parses a heredoc inside $( ), so the AppleScript lives in
 # a temp file instead.
-CLICK_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/jcode-notify-click.XXXXXX")"
+CLICK_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/kcode-notify-click.XXXXXX")"
 cat > "$CLICK_SCRIPT" <<'APPLESCRIPT'
 tell application "System Events"
   tell application process "NotificationCenter"
@@ -95,7 +95,7 @@ done
 
 CLICK_LOGGED="$(cat "$PROBE_FILE" 2>/dev/null)"
 rm -f "$PROBE_FILE"
-pkill -f "jcode-notifier --post" >/dev/null 2>&1
+pkill -f "kcode-notifier --post" >/dev/null 2>&1
 
 echo "frontmost after: $FINAL"
 echo "helper click record: ${CLICK_LOGGED:-<none>}"

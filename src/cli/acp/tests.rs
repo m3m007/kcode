@@ -169,7 +169,7 @@ fn prompt_response_omits_unreported_usage_and_cache_fields() {
 }
 
 #[test]
-fn initialize_standard_omits_jcode_meta() {
+fn initialize_standard_omits_kcode_meta() {
     let result = initialize_result(&json!({"protocolVersion": 1}), AcpProfile::Standard);
     assert_eq!(result["protocolVersion"], 1);
     assert!(result["agentCapabilities"].get("_meta").is_none());
@@ -177,10 +177,10 @@ fn initialize_standard_omits_jcode_meta() {
 }
 
 #[test]
-fn initialize_full_advertises_jcode_extension_meta() {
+fn initialize_full_advertises_kcode_extension_meta() {
     let result = initialize_result(&json!({"protocolVersion": 1}), AcpProfile::Full);
     assert_eq!(
-        result["agentCapabilities"]["_meta"]["jcode"]["profile"],
+        result["agentCapabilities"]["_meta"]["kcode"]["profile"],
         "full"
     );
 }
@@ -349,7 +349,7 @@ fn advertised_commands_parse_to_real_dispatch_variants() {
 fn project_skills(names: &[&str]) -> (tempfile::TempDir, crate::skill::SkillRegistry) {
     let dir = tempfile::tempdir().unwrap();
     for name in names {
-        let skill_dir = dir.path().join(".jcode/skills").join(name);
+        let skill_dir = dir.path().join(".kcode/skills").join(name);
         std::fs::create_dir_all(&skill_dir).unwrap();
         std::fs::write(
             skill_dir.join("SKILL.md"),
@@ -396,7 +396,7 @@ fn unknown_escaped_and_path_like_slash_text_is_untouched() {
 #[test]
 fn explicit_skill_metadata_is_read_from_prompt_meta() {
     assert_eq!(
-        explicit_skill_from_params(&json!({"_meta": {"jcode": {"skill": "/interrogate"}}})),
+        explicit_skill_from_params(&json!({"_meta": {"kcode": {"skill": "/interrogate"}}})),
         Some("interrogate".to_string())
     );
     assert_eq!(

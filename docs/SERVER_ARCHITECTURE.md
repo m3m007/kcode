@@ -8,7 +8,7 @@ See also:
 
 ## Overview
 
-jcode uses a **single-server, multi-client** architecture. One server process
+kcode uses a **single-server, multi-client** architecture. One server process
 manages all sessions and state; TUI clients connect over a Unix socket and
 can reconnect transparently after disconnects or server reloads.
 
@@ -16,10 +16,10 @@ can reconnect transparently after disconnects or server reloads.
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              SERVER (🔥 blazing)                              │
 │                                                                             │
-│  jcode serve                                                                │
-│  ├── Unix socket:  /run/user/$UID/jcode.sock                                │
-│  ├── Debug socket: /run/user/$UID/jcode-debug.sock                          │
-│  ├── Registry:     ~/.jcode/servers.json                                    │
+│  kcode serve                                                                │
+│  ├── Unix socket:  /run/user/$UID/kcode.sock                                │
+│  ├── Debug socket: /run/user/$UID/kcode-debug.sock                          │
+│  ├── Registry:     ~/.kcode/servers.json                                    │
 │  ├── Provider (Claude/OpenAI/OpenRouter)                                    │
 │  ├── MCP pool (shared across sessions)                                      │
 │  └── Sessions:                                                              │
@@ -51,7 +51,7 @@ The server gets a random adjective/verb name on startup (e.g., "blazing").
 Each session gets an animal noun (e.g., "fox"). Together they form a natural
 phrase displayed in the UI: "🔥 blazing 🦊 fox".
 
-The server name persists across reloads via the registry (`~/.jcode/servers.json`).
+The server name persists across reloads via the registry (`~/.kcode/servers.json`).
 When the server execs into a new binary on `/reload`, the new process registers
 with a fresh name. Stale entries are cleaned up automatically.
 
@@ -60,7 +60,7 @@ with a fresh name. Stale entries are cleaned up automatically.
 ```
   START                          CONNECT                     RELOAD
   ─────                          ───────                     ──────
-  jcode (first run)              jcode (subsequent)          /reload
+  kcode (first run)              kcode (subsequent)          /reload
        │                              │                          │
        ├─▶ No server? Spawn daemon    ├─▶ Server exists?         ├─▶ Server execs into
        ├─▶ Wait for socket            │   Connect directly       │   new binary (same PID)
@@ -70,18 +70,18 @@ with a fresh name. Stale entries are cleaned up automatically.
 
 ### Server Startup
 
-When you run `jcode`, it checks if a server is already running:
+When you run `kcode`, it checks if a server is already running:
 
 1. **Server exists**: connect directly as a client
-2. **No server**: spawn `jcode serve` as a detached daemon (with `setsid`),
+2. **No server**: spawn `kcode serve` as a detached daemon (with `setsid`),
    wait for the socket, then connect
 
 The server is fully detached from the spawning client via `setsid()`, so killing
 any client never affects the server or other clients.
 
 Long-lived deployments can give the daemon a stable client-visible identity with
-`jcode serve --server-name <name>` or the `JCODE_SERVER_NAME` environment
-variable. The optional `JCODE_SERVER_DISPLAY_NAME` environment variable is also
+`kcode serve --server-name <name>` or the `KCODE_SERVER_NAME` environment
+variable. The optional `KCODE_SERVER_DISPLAY_NAME` environment variable is also
 accepted for service managers that prefer a display-oriented name. CLI input wins
 over environment input. Names are normalized to registry-safe lowercase labels,
 so `mount-cloud/fabian` displays as `mount-cloud-fabian`.
@@ -91,7 +91,7 @@ so `mount-cloud/fabian` displays as `mount-cloud-fabian`.
 The server shuts down when:
 - **Idle timeout**: no clients connected and no live headless swarm workers for
   5 minutes. The shared-server timeout is fixed at 300 seconds
-  (`IDLE_TIMEOUT_SECS` in `crates/jcode-app-core/src/server.rs`), not configurable
+  (`IDLE_TIMEOUT_SECS` in `crates/kcode-app-core/src/server.rs`), not configurable
   through `[server]`. The monitor checks every 10 seconds, so shutdown can occur
   slightly later than five minutes.
 - **Manual**: server process is killed
@@ -102,13 +102,13 @@ use a separate lifecycle policy.
 
 ### Headless `run` Sessions and Ephemeral Servers
 
-`jcode run` does not use a server at all: it builds an `Agent` in-process,
+`kcode run` does not use a server at all: it builds an `Agent` in-process,
 sends one message, and exits. `--socket <path>` only selects which socket its
 tools dial, so for most runs nothing ever binds that path.
 
 One tool genuinely needs a server: `swarm` talks to the daemon over the socket
 because workers are server-hosted headless sessions. For a `run` session that
-used to fail outright ("jcode server is not running"), which made swarm
+used to fail outright ("kcode server is not running"), which made swarm
 unavailable to headless automation (issue #1748). Instead, the `run` command
 registers an on-demand server spawner
 (`crate::server_spawn::register_on_demand_server_spawner`), and the first swarm
@@ -117,18 +117,18 @@ normal long-lived daemon; on a custom `--socket` it is a server owned by the
 run:
 
 ```
-jcode run --socket /tmp/run.sock "spawn a worker that ..."
+kcode run --socket /tmp/run.sock "spawn a worker that ..."
    │
    ├─▶ agent runs in-process; no server started
    ├─▶ swarm tool dials /tmp/run.sock → not found
-   ├─▶ spawn `jcode serve --temporary-server --owner-pid <run pid>`
+   ├─▶ spawn `kcode serve --temporary-server --owner-pid <run pid>`
    │      on /tmp/run.sock, using the *current* executable
    └─▶ retry the request; the server exits within ~10s of the run
 ```
 
 Properties worth knowing:
 
-- **Lazy.** Runs that never use `swarm` pay nothing; `jcode run` startup is
+- **Lazy.** Runs that never use `swarm` pay nothing; `kcode run` startup is
   unchanged.
 - **Socket-directed.** Only a custom `--socket` gets the owned, temporary
   server. Without `--socket` the run bootstraps the ordinary shared daemon:
@@ -149,7 +149,7 @@ Properties worth knowing:
 
 ### Session Ownership Markers (`active_pids`)
 
-`~/.jcode/active_pids/<session_id>` contains the PID of the process that owns the
+`~/.kcode/active_pids/<session_id>` contains the PID of the process that owns the
 session. In server mode this is the daemon PID, so multiple sessions can share
 the same PID. Despite the directory name, “active” means process ownership, not
 that a terminal window is open, a client is connected, or a model is generating.
@@ -170,7 +170,7 @@ forwarding wrappers for remote daemons can keep the client and server paths
 separate with `--remote-working-dir`:
 
 ```bash
-jcode --socket /tmp/jcode.sock -C /local/checkout --remote-working-dir /remote/checkout
+kcode --socket /tmp/kcode.sock -C /local/checkout --remote-working-dir /remote/checkout
 ```
 
 `-C` must exist on the client. `--remote-working-dir` must be an absolute path
@@ -200,22 +200,22 @@ reload, network issue, etc.):
 
 ```
 /run/user/$UID/
-├── jcode.sock              # Main communication socket
-├── jcode-debug.sock        # Debug/testing socket
-└── jcode-daemon.lock       # "one daemon on jcode.sock" flock
+├── kcode.sock              # Main communication socket
+├── kcode-debug.sock        # Debug/testing socket
+└── kcode-daemon.lock       # "one daemon on kcode.sock" flock
 ```
 
-A `--socket`/`JCODE_SOCKET` override gets its own sibling lock
+A `--socket`/`KCODE_SOCKET` override gets its own sibling lock
 (`<socket>.daemon.lock`), so an isolated server can bind its socket while the
 shared daemon keeps running. One daemon per *socket*, not per runtime dir:
 the spawn lock has always been socket-scoped, and the daemon lock now matches.
 
 ## Self-Dev Mode
 
-When running `jcode` inside the jcode repository:
+When running `kcode` inside the kcode repository:
 
 1. Auto-detects the repo and enables self-dev mode
-2. Connects to the normal shared jcode server
+2. Connects to the normal shared kcode server
 3. Marks that session as canary/self-dev via subscribe metadata
 4. Enables selfdev prompt/tooling only for that session
 5. `/reload` still hot-reloads the shared server and clients reconnect
@@ -224,11 +224,11 @@ When running `jcode` inside the jcode repository:
 
 | Scenario | Behavior |
 |----------|----------|
-| First `jcode` run | Spawns server daemon, connects |
-| Subsequent `jcode` | Connects to existing server |
+| First `kcode` run | Spawns server daemon, connects |
+| Subsequent `kcode` | Connects to existing server |
 | Kill a client | Server + other clients unaffected |
 | `/reload` | Server execs new binary, clients reconnect |
 | All clients close | Shared-server idle timeout after 5 min without live headless swarm workers (unless debug control is enabled) |
-| Resume session | `jcode --resume fox` reconnects to existing session |
-| `jcode run` | Agent runs in-process; no server unless a tool needs one |
-| `jcode run` + `swarm` | Bootstraps the shared daemon, or a run-owned temporary server when `--socket` is custom |
+| Resume session | `kcode --resume fox` reconnects to existing session |
+| `kcode run` | Agent runs in-process; no server unless a tool needs one |
+| `kcode run` + `swarm` | Bootstraps the shared daemon, or a run-owned temporary server when `--socket` is custom |

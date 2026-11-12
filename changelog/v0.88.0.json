@@ -10,17 +10,17 @@
   "improvements": [
     "The edit tool now applies multiple replacements atomically, replacing the separate multiedit tool",
     "Saved sessions always appear in the session list even when they are older than the recency limit, and /save bookmarks persist through later writes",
-    "Voice input starts recording immediately without waiting for the Nari connection, keeps your first words, and recognizes Jcode product vocabulary",
+    "Voice input starts recording immediately without waiting for the Nari connection, keeps your first words, and recognizes Kcode product vocabulary",
     "Unclear voice requests are routed to the coding agent instead of being dropped as uncertain",
-    "Importing credentials from other tools never overrides logins Jcode already has",
-    "Add OrcaRouter as a provider choice for jcode login and --provider",
+    "Importing credentials from other tools never overrides logins Kcode already has",
+    "Add OrcaRouter as a provider choice for kcode login and --provider",
     "Parallel tool calls stream their names and inputs as soon as they arrive",
     "Rust and TypeScript SDK clients can set per-session system prompts, enforce tool policies, and receive structured reasons for abnormal turn stops",
     "The auth badge updates immediately when switching between OAuth and API-key routes",
     "Add /merge-remote-release to merge the current branch and trigger a CI release in one step"
   ],
   "fixes": [
-    "Saving settings from the CLI no longer erases Jcode Desktop settings in the shared config file",
+    "Saving settings from the CLI no longer erases Kcode Desktop settings in the shared config file",
     "Visible swarm agents keep their chosen model, provider, and effort when their window attaches",
     "Proxy tool arguments are preserved until the stream completes",
     "Interleaved streaming tool calls from OpenAI stay matched to the correct call",

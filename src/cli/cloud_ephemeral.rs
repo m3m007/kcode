@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-const HOST_PREFIX: &str = "jcode-ephemeral-";
+const HOST_PREFIX: &str = "kcode-ephemeral-";
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Machine {
@@ -102,7 +102,7 @@ pub(super) fn ssh_args(id: &str) -> Result<Vec<String>> {
                 "-N",
                 "",
                 "-C",
-                "jcode-ephemeral",
+                "kcode-ephemeral",
                 "-f",
             ])
             .arg(&key)
@@ -151,12 +151,12 @@ fn connect(id: &str) -> Result<Machine> {
             bail!("ephemeral machine is {}", machine.connection.state);
         }
         if machine.connection.state != last {
-            eprintln!("[jcode cloud] {id}: {}", machine.connection.state);
+            eprintln!("[kcode cloud] {id}: {}", machine.connection.state);
             last.clone_from(&machine.connection.state);
         }
         if Instant::now() >= deadline {
             bail!(
-                "machine startup timed out; it remains bounded by its TTL. Inspect with `jcode cloud ephemeral status {id}`"
+                "machine startup timed out; it remains bounded by its TTL. Inspect with `kcode cloud ephemeral status {id}`"
             );
         }
         std::thread::sleep(Duration::from_secs(4));
@@ -239,7 +239,7 @@ pub(crate) fn run_cli(action: CloudEphemeralCommand) -> Result<()> {
             let body = create_body(ttl_seconds, request_id, name)?;
             // Printed before I/O so an uncertain network outcome can be retried safely.
             eprintln!(
-                "[jcode cloud] request-id: {} (reuse with --request-id if interrupted)",
+                "[kcode cloud] request-id: {} (reuse with --request-id if interrupted)",
                 body["request_id"]
                     .as_str()
                     .context("missing provisioning request ID")?
@@ -249,7 +249,7 @@ pub(crate) fn run_cli(action: CloudEphemeralCommand) -> Result<()> {
             print_machine(&machine, json)?;
             if !json {
                 println!(
-                    "Attach: jcode cloud ephemeral attach {}\nDestroy: jcode cloud ephemeral terminate {} --yes",
+                    "Attach: kcode cloud ephemeral attach {}\nDestroy: kcode cloud ephemeral terminate {} --yes",
                     machine.id, machine.id
                 );
             }
@@ -354,7 +354,7 @@ mod tests {
     fn ephemeral_ids_cannot_target_persistent_host_or_inject_paths() {
         assert!(validate_id(ID).is_ok());
         for invalid in [
-            "jcode-cloud",
+            "kcode-cloud",
             "../cloud",
             "cm_",
             "cm_0123456789ABCDEF0123456789abcdef",
@@ -363,7 +363,7 @@ mod tests {
             assert!(validate_id(invalid).is_err(), "{invalid}");
         }
         assert_eq!(host_id(&machine_host(ID).unwrap()), Some(ID));
-        assert!(host_id("jcode-cloud").is_none());
+        assert!(host_id("kcode-cloud").is_none());
         assert_eq!(machine_path(ID).unwrap(), format!("cloud/machines/{ID}"));
     }
 
@@ -372,7 +372,7 @@ mod tests {
         let text = ssh_config(
             ID,
             Path::new("/private/with space"),
-            Path::new("/bin/jcode"),
+            Path::new("/bin/kcode"),
         )
         .unwrap();
         assert!(text.contains(&format!("cloud ephemeral proxy {ID}")));
@@ -381,7 +381,7 @@ mod tests {
         assert!(text.contains("StrictHostKeyChecking yes"));
         assert!(text.contains("\"/private/with space/id_ed25519\""));
         assert!(!text.contains("cloud proxy\n"));
-        assert!(!text.contains("Host jcode-cloud\n"));
+        assert!(!text.contains("Host kcode-cloud\n"));
     }
 
     #[test]

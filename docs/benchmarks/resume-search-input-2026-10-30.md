@@ -21,7 +21,7 @@ a nonmatching `modal cli` query:
 
 - Equivalent old synchronous matching work: 188.49 ms.
 - New complete search key handler: 1.61 ms.
-- Command: `justrust test -p jcode-tui --lib benchmark_resume_search_keystroke_latency -- --ignored --nocapture`.
+- Command: `justrust test -p kcode-tui --lib benchmark_resume_search_keystroke_latency -- --ignored --nocapture`.
 - Hosted run: `20261030-232109807-2794365`.
 
 Local real-terminal smoke test against the actual session store, using isolated
@@ -39,7 +39,7 @@ claims.
 
 ## Correctness
 
-`justrust test -p jcode-tui --lib session_picker -- --nocapture` passed 163 tests
+`justrust test -p kcode-tui --lib session_picker -- --nocapture` passed 163 tests
 (10 ignored), hosted run `20261030-232058378-2795113`. Coverage includes deferred
 fuzzy matching, deferred literal matching for large indexes, query cancellation,
 metadata plus transcript token matching, progressive preview-scroll preservation,

@@ -11,7 +11,7 @@
     "Copilot accepts reasoning effort for every model whose catalog advertises it and sends it on both the Responses and Chat Completions APIs",
     "Saved API keys stay in their env files instead of the running process, so editing a key file takes effect without a restart",
     "The client shows the context window the server resolved instead of a placeholder",
-    "The jcode log records which binary actually launched, to diagnose stale copies on PATH",
+    "The kcode log records which binary actually launched, to diagnose stale copies on PATH",
     "Gmail can update, list, and delete drafts",
     "Undo in the composer reverts a whole typing burst at once, including Korean and other IME input (thanks @mg-mg-mg)",
     "Cost estimates for OpenAI-compatible profiles fall back to a matching model from another provider's price catalog (thanks @ogodevonline)",

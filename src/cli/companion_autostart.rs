@@ -1,4 +1,4 @@
-//! Start `jcode companion` in the background when a local TUI client launches
+//! Start `kcode companion` in the background when a local TUI client launches
 //! and none is running, so global voice, opening and terminal spawns work
 //! without a manual service. Controlled by `[companion] autostart`.
 
@@ -20,18 +20,18 @@ fn should_autostart(
 /// refuses to start when another one already answers on the socket.
 pub fn spawn_if_needed(native_ssh: bool) {
     let enabled = crate::config::config().companion.autostart;
-    let env_off = std::env::var("JCODE_COMPANION_AUTOSTART").as_deref() == Ok("0");
+    let env_off = std::env::var("KCODE_COMPANION_AUTOSTART").as_deref() == Ok("0");
     if !should_autostart(
         enabled,
         native_ssh,
         crate::auth::running_in_test_harness(),
         env_off,
-        std::env::var_os("JCODE_COMPANION").is_some(),
+        std::env::var_os("KCODE_COMPANION").is_some(),
     ) {
         return;
     }
     if let Err(error) = std::thread::Builder::new()
-        .name("jcode-companion-autostart".into())
+        .name("kcode-companion-autostart".into())
         .spawn(|| {
             if crate::companion_client::is_running() {
                 return;
@@ -39,7 +39,7 @@ pub fn spawn_if_needed(native_ssh: bool) {
             if let Err(error) = spawn_detached() {
                 crate::logging::warn(&format!("companion autostart failed: {error:#}"));
             } else {
-                crate::logging::info("companion autostart: launched jcode companion");
+                crate::logging::info("companion autostart: launched kcode companion");
                 // Give it a moment, so the first open/spawn request finds it.
                 std::thread::sleep(Duration::from_millis(200));
             }

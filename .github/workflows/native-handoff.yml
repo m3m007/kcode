@@ -30,7 +30,7 @@ env:
 
 jobs:
   producer:
-    if: github.repository == '1jehuang/jcode' && github.ref == 'refs/heads/master'
+    if: github.repository == '1jehuang/kcode' && github.ref == 'refs/heads/master'
     runs-on: ${{ inputs.lane == 'linux-arm64' && 'ubuntu-24.04' || 'macos-15' }}
     timeout-minutes: 120
     outputs:
@@ -90,16 +90,16 @@ jobs:
           if [[ "$LANE" == linux-arm64 ]]; then
             test -n "$JCODE_API_KEY" || { echo 'JUSTRUST_API_KEY is required for hosted ARM builds' >&2; exit 1; }
             export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUSTFLAGS='-Ztls-model=emulated'
-            justrust build --remote --locked --release --bin jcode --target aarch64-unknown-linux-gnu -Zbuild-std=std,panic_abort --features linux-compat-vendored-openssl
+            justrust build --remote --locked --release --bin kcode --target aarch64-unknown-linux-gnu -Zbuild-std=std,panic_abort --features linux-compat-vendored-openssl
             target=aarch64-unknown-linux-gnu
           else
             # Uses Apple's installed SDK only on the native GitHub macOS runner.
-            justrust build --local --locked --release --bin jcode --target aarch64-apple-darwin
+            justrust build --local --locked --release --bin kcode --target aarch64-apple-darwin
             target=aarch64-apple-darwin
           fi
           git diff --exit-code
           mkdir handoff
-          cp "target/$target/release/jcode" handoff/jcode
+          cp "target/$target/release/kcode" handoff/kcode
           justrust show > handoff/build-report.txt
           justrust show --json > handoff/build-report.json
       - name: Seal artifact provenance
@@ -143,7 +143,7 @@ jobs:
 
   sign-macos:
     needs: [producer, native-verify]
-    if: inputs.sign_macos && inputs.lane == 'macos-arm64' && github.repository == '1jehuang/jcode' && github.ref == 'refs/heads/master'
+    if: inputs.sign_macos && inputs.lane == 'macos-arm64' && github.repository == '1jehuang/kcode' && github.ref == 'refs/heads/master'
     runs-on: macos-15
     # Configure required reviewers AND deployment branch restriction to master.
     environment: native-handoff-signing

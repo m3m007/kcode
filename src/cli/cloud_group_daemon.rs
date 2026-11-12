@@ -138,7 +138,7 @@ fn standalone_without_daemon(id: &str) -> Result<bool> {
     }
     for directory in [
         storage::durable_state_dir().join("swarm"),
-        storage::runtime_dir().join("jcode-swarm-state"),
+        storage::runtime_dir().join("kcode-swarm-state"),
     ] {
         if !directory.exists() {
             continue;

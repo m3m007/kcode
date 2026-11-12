@@ -1,7 +1,7 @@
 # Thinking spacing
 
 Thinking uses the original transcript spacing by default, with a blank row before a thinking block.
-To opt into compact spacing, add this to `~/.jcode/config.toml` (or `$JCODE_HOME/config.toml`):
+To opt into compact spacing, add this to `~/.kcode/config.toml` (or `$KCODE_HOME/config.toml`):
 
 ```toml
 [display]

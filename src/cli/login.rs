@@ -15,7 +15,7 @@ use crate::provider_catalog::save_named_api_key;
 mod device_login;
 mod existing_key_notice;
 mod google;
-mod jcode_device;
+mod kcode_device;
 mod next_step;
 mod scriptable;
 use google::*;
@@ -224,14 +224,14 @@ pub async fn run_login(
         ProviderChoice::Auto => {
             if options.uses_scriptable_flow()? {
                 anyhow::bail!(
-                    "Scriptable login flags require an explicit provider. Use `jcode login --provider <provider> ...`."
+                    "Scriptable login flags require an explicit provider. Use `kcode login --provider <provider> ...`."
                 );
             }
             crate::telemetry::record_setup_step_once("login_picker_opened");
             let providers = crate::provider_catalog::cli_login_providers();
             if !io::stdin().is_terminal() {
                 anyhow::bail!(
-                    "`jcode login --provider auto` requires an interactive terminal. Use `jcode login --provider <provider>` in non-interactive mode."
+                    "`kcode login --provider auto` requires an interactive terminal. Use `kcode login --provider <provider>` in non-interactive mode."
                 );
             }
             if let Some(imported) =
@@ -346,7 +346,7 @@ pub async fn run_login_provider(
                 eprintln!("Imported {} existing auth source(s).", imported);
                 Ok(LoginFlowOutcome::Completed)
             }
-            LoginProviderTarget::Jcode => login_jcode_flow(options.no_browser)
+            LoginProviderTarget::Jcode => login_kcode_flow(options.no_browser)
                 .await
                 .map(|_| LoginFlowOutcome::Completed),
             LoginProviderTarget::Claude => login_claude_flow(account_label, options.no_browser)
@@ -547,7 +547,7 @@ fn maybe_persist_default_provider_after_login(
     }
 }
 
-/// Best-effort: tell a running jcode server that on-disk auth has changed so it
+/// Best-effort: tell a running kcode server that on-disk auth has changed so it
 /// can hot-initialize any newly-configured providers. No-op if no server is running.
 async fn notify_running_server_auth_changed_best_effort(provider: Option<&str>) {
     let Ok(mut client) = crate::server::Client::connect().await else {
@@ -571,14 +571,14 @@ async fn notify_running_server_auth_changed_best_effort(provider: Option<&str>) 
     }
 }
 
-async fn login_jcode_flow(no_browser: bool) -> Result<()> {
-    eprintln!("Starting jcode subscription sign-in...");
-    let _ = jcode_device::login_jcode_device_flow(no_browser).await?;
+async fn login_kcode_flow(no_browser: bool) -> Result<()> {
+    eprintln!("Starting kcode subscription sign-in...");
+    let _ = kcode_device::login_kcode_device_flow(no_browser).await?;
     Ok(())
 }
 
-pub(crate) async fn run_jcode_account_login(no_browser: bool) -> Result<()> {
-    login_jcode_flow(no_browser).await
+pub(crate) async fn run_kcode_account_login(no_browser: bool) -> Result<()> {
+    login_kcode_flow(no_browser).await
 }
 
 fn login_openai_api_key_flow() -> Result<()> {
@@ -628,7 +628,7 @@ async fn login_claude_flow(requested_label: Option<&str>, no_browser: bool) -> R
     eprintln!(
         "Account '{}' stored at {}",
         label,
-        auth::claude::jcode_path()?.display()
+        auth::claude::kcode_path()?.display()
     );
     if let Some(email) = profile_email {
         eprintln!("Profile email: {}", email);
@@ -674,7 +674,7 @@ async fn login_openai_flow(requested_label: Option<&str>, no_browser: bool) -> R
     eprintln!(
         "Successfully logged in to OpenAI! Account '{}' saved to {}",
         label,
-        crate::storage::jcode_dir()?
+        crate::storage::kcode_dir()?
             .join("openai-auth.json")
             .display()
     );
@@ -760,7 +760,7 @@ fn login_azure_flow() -> Result<()> {
 
     eprintln!("Setting up Azure OpenAI...");
     eprintln!(
-        "Reference: OpenCode supports Azure OpenAI with Entra credentials. jcode uses Azure OpenAI's newer `/openai/v1` API with either Microsoft Entra ID or an API key.\n"
+        "Reference: OpenCode supports Azure OpenAI with Entra credentials. kcode uses Azure OpenAI's newer `/openai/v1` API with either Microsoft Entra ID or an API key.\n"
     );
 
     let endpoint_raw = read_line_trimmed(
@@ -805,7 +805,7 @@ fn login_azure_flow() -> Result<()> {
         eprintln!();
         eprintln!("Using Microsoft Entra ID via Azure's DefaultAzureCredential chain.");
         eprintln!(
-            "That means jcode can authenticate via `az login`, managed identity, or Azure environment credentials."
+            "That means kcode can authenticate via `az login`, managed identity, or Azure environment credentials."
         );
     } else {
         eprint!("Paste your Azure OpenAI API key: ");
@@ -878,7 +878,7 @@ fn login_openai_compatible_flow(
                     )
                 })?;
             crate::provider_catalog::save_env_value_to_env_file(
-                "JCODE_OPENAI_COMPAT_API_BASE",
+                "KCODE_OPENAI_COMPAT_API_BASE",
                 crate::provider_catalog::OPENAI_COMPAT_PROFILE.env_file,
                 Some(&normalized),
             )?;
@@ -895,7 +895,7 @@ fn login_openai_compatible_flow(
                 anyhow::bail!("Invalid API key environment variable name: {}", api_key_env);
             }
             crate::provider_catalog::save_env_value_to_env_file(
-                "JCODE_OPENAI_COMPAT_API_KEY_NAME",
+                "KCODE_OPENAI_COMPAT_API_KEY_NAME",
                 crate::provider_catalog::OPENAI_COMPAT_PROFILE.env_file,
                 Some(api_key_env),
             )?;
@@ -909,7 +909,7 @@ fn login_openai_compatible_flow(
         };
         if !default_model_input.is_empty() {
             crate::provider_catalog::save_env_value_to_env_file(
-                "JCODE_OPENAI_COMPAT_DEFAULT_MODEL",
+                "KCODE_OPENAI_COMPAT_DEFAULT_MODEL",
                 crate::provider_catalog::OPENAI_COMPAT_PROFILE.env_file,
                 Some(&default_model_input),
             )?;
@@ -1019,7 +1019,7 @@ fn login_openai_compatible_flow(
     Ok(())
 }
 
-pub use jcode_terminal_prompt::read_secret_line;
+pub use kcode_terminal_prompt::read_secret_line;
 
 mod presenter;
 pub use presenter::install_terminal_login_presenter;
@@ -1076,7 +1076,7 @@ fn login_cursor_flow() -> Result<()> {
             .join("cursor.env")
             .display()
     );
-    eprintln!("jcode will use the native Cursor HTTPS transport.");
+    eprintln!("kcode will use the native Cursor HTTPS transport.");
     crate::telemetry::record_auth_success("cursor", "api_key");
     Ok(())
 }
@@ -1084,10 +1084,10 @@ fn login_cursor_flow() -> Result<()> {
 async fn login_antigravity_flow(no_browser: bool) -> Result<()> {
     eprintln!("Starting native Antigravity login...");
     eprintln!(
-        "jcode will authenticate directly with Google Antigravity; the Antigravity desktop app is not required."
+        "kcode will authenticate directly with Google Antigravity; the Antigravity desktop app is not required."
     );
     eprintln!(
-        "If browser launch fails, or you pass `--no-browser`, jcode will prompt for the callback URL instead."
+        "If browser launch fails, or you pass `--no-browser`, kcode will prompt for the callback URL instead."
     );
     eprintln!(
         "If the browser later shows a loopback/callback error page, copy the full URL from the address bar and re-run with `--no-browser`."
@@ -1132,7 +1132,7 @@ async fn login_gemini_flow(no_browser: bool) -> Result<()> {
         "If your student/education plan is attached to your Google account, use that account in the browser flow."
     );
     eprintln!(
-        "If browser launch fails, or you pass `--no-browser`, jcode will prompt for the manual authorization code."
+        "If browser launch fails, or you pass `--no-browser`, kcode will prompt for the manual authorization code."
     );
     eprintln!(
         "Note: school / Workspace Google accounts may also require GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION for Code Assist entitlement checks."

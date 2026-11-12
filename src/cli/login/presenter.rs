@@ -13,11 +13,11 @@ impl crate::auth::login_ui::LoginPresenter for TerminalLoginPresenter {
         indent: &str,
         browser_suppressed: bool,
     ) -> Option<String> {
-        jcode_terminal_prompt::qr::indented_section(data, heading, indent, browser_suppressed)
+        kcode_terminal_prompt::qr::indented_section(data, heading, indent, browser_suppressed)
     }
 
     fn read_secret_line(&self) -> Result<String> {
-        jcode_terminal_prompt::read_secret_line()
+        kcode_terminal_prompt::read_secret_line()
     }
 }
 

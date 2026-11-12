@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Validation only. The standalone helper, not this script, performs signing.
 set -euo pipefail
-[[ "${GITHUB_REPOSITORY:-}" == 1jehuang/jcode && "${GITHUB_REF:-}" == refs/heads/master &&
+[[ "${GITHUB_REPOSITORY:-}" == 1jehuang/kcode && "${GITHUB_REF:-}" == refs/heads/master &&
    "${GITHUB_EVENT_NAME:-}" == workflow_dispatch ]] || { echo 'Requires canonical master dispatch' >&2; exit 1; }
 [[ "$(uname -s)" == Darwin && "$(uname -m)" == arm64 ]] || { echo 'Requires native Apple ARM64' >&2; exit 1; }
 pin=17c344f2e83f836598b82715950497c0879aa713
@@ -15,10 +15,10 @@ prepare)
     mkdir "$fixture"
     cat > "$fixture/fixture.c" <<'C'
 #include <stdio.h>
-int main(void) { puts("jcode-signing-helper-native-ok"); return 0; }
+int main(void) { puts("kcode-signing-helper-native-ok"); return 0; }
 C
     /usr/bin/clang -arch arm64 -O2 "$fixture/fixture.c" -o "$fixture/unsigned"
-    [[ "$("./$fixture/unsigned")" == jcode-signing-helper-native-ok ]]
+    [[ "$("./$fixture/unsigned")" == kcode-signing-helper-native-ok ]]
     echo "sha256=$(hash "$fixture/unsigned")" >> "$GITHUB_OUTPUT"
     exit 0
     ;;
@@ -118,10 +118,10 @@ assert all(c[0] == '/usr/bin/codesign' for c in plan['commands'])
 assert plan['commands'][1][-2].startswith('=anchor apple generic')
 PY
 python3 "$helper" "${args[@]}" --execute > "$work/execution.json"
-requirement='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and identifier "com.jcode.cli"'
+requirement='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and identifier "com.kcode.cli"'
 requirement+=" and certificate leaf[subject.OU] = \"$team_id\""
 /usr/bin/codesign --verify --strict --verbose=2 -R "=$requirement" "$fixture/signed"
-[[ "$("./$fixture/signed")" == jcode-signing-helper-native-ok ]]
+[[ "$("./$fixture/signed")" == kcode-signing-helper-native-ok ]]
 signed_hash=$(hash "$fixture/signed")
 if python3 "$helper" "${args[@]}" --execute > "$work/refusal.txt" 2>&1; then
     echo 'Helper accepted an existing destination' >&2; exit 1
@@ -140,7 +140,7 @@ receipt = {
     'workflow': os.environ['GITHUB_WORKFLOW'], 'helper_repository': '1jehuang/justrust',
     'helper_revision': sys.argv[2], 'unsigned_sha256': os.environ['TRUSTED_SHA256'],
     'signed_sha256': sys.argv[3], 'team_id': sys.argv[4],
-    'target': 'aarch64-apple-darwin', 'identifier': 'com.jcode.cli',
+    'target': 'aarch64-apple-darwin', 'identifier': 'com.kcode.cli',
     'checks': ['wrong-hash-no-output', 'plan-no-output', 'real-helper-execute', 'apple-chain-identifier-team',
                'signed-native-execution', 'unsigned-unchanged', 'existing-destination-preserved'],
     'notarized': False,

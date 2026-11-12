@@ -22,7 +22,7 @@
     "OAuth-backed Bash calls honor their configured timeouts",
     "Ambient configuration changes take effect without restarting the session",
     "Development builds are protected against unintended backward updates",
-    "Gemini retains tool thought signatures and retries transient Code Assist failures without confusing provider sessions with Jcode sessions",
+    "Gemini retains tool thought signatures and retries transient Code Assist failures without confusing provider sessions with Kcode sessions",
     "MCP tools with colliding normalized names remain independently callable without losing their tool policies",
     "Compatible tmux sessions request extended keys so Shift+Enter reaches the input editor",
     "Project and global prompt guidance no longer appears twice when it resolves to the same source",

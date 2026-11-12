@@ -2,7 +2,7 @@
 
 The aggregate turn-end weak-point reminder is **disabled by default**, including for existing configurations that omit the setting. The display-only **Todo completion** report does not depend on this toggle or on auto-poke.
 
-To opt in, add the following to `~/.jcode/config.toml` (or your `JCODE_HOME/config.toml`):
+To opt in, add the following to `~/.kcode/config.toml` (or your `KCODE_HOME/config.toml`):
 
 ```toml
 [features]
@@ -15,12 +15,12 @@ With auto-poke enabled, an unchanged incomplete todo list receives at most three
 
 Todos marked `completely_blocked` are an exception to automatic continuation: **✋ Completely blocked**. No way forward. Its object contains only a nonempty `reason` string. It pauses retries for that item until its condition is cleared, without creating a timed review. Independent actionable todos still continue normally. This condition does not mark work completed and is distinct from waiting for a running background task or an external blocker with a review deadline.
 
-When enabled, recorded todo gate observations produce the existing aggregate reminder once per completion cycle, after open work finishes and before the completion gates. Repeated observations during that cycle do not trigger another aggregate reminder. New open work starts another cycle. The TUI and headless `jcode run` both respect this setting.
+When enabled, recorded todo gate observations produce the existing aggregate reminder once per completion cycle, after open work finishes and before the completion gates. Repeated observations during that cycle do not trigger another aggregate reminder. New open work starts another cycle. The TUI and headless `kcode run` both respect this setting.
 
 SDK clients using the pure shared policy should apply their configuration explicitly:
 
 ```rust
-let mut policy = jcode_sdk::todo::FollowUpPolicy::new(config.features.auto_poke);
+let mut policy = kcode_sdk::todo::FollowUpPolicy::new(config.features.auto_poke);
 policy.set_gate_digest_enabled(config.features.todo_gate_digest);
 ```
 

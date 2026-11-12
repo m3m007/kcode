@@ -1,4 +1,4 @@
-# Releasing jcode
+# Releasing kcode
 
 Official releases have two gates: **successful CI for the exact tagged commit** and **a complete platform asset set before publication**. Local preparation can save build time, but it does not bypass either gate. `.github/workflows/release.yml` owns final publication.
 
@@ -6,7 +6,7 @@ Official releases have two gates: **successful CI for the exact tagged commit** 
 
 The separate `.github/workflows/preview.yml` pipeline is **enabled by default** on
 canonical master. No repository variable setup is required. For an emergency
-opt-out, set repository Actions variable `JCODE_V1_PREVIEW_ENABLED=false` and
+opt-out, set repository Actions variable `KCODE_V1_PREVIEW_ENABLED=false` and
 cancel any running preview workflow. Removing the variable or setting it to
 anything other than the literal `false` restores publication. The publisher also
 stops automatically once the exact stable `v1.0.0` tag exists, including builds
@@ -18,13 +18,13 @@ Download the matching OS/architecture archive from a preview's GitHub release,
 verify it against `SHA256SUMS`, and extract the entire archive into a separate
 directory. Keep the Linux wrapper, `.bin`, and any shared libraries together.
 Run the extracted binary explicitly by its full path (the `.exe` on Windows),
-not the old stable `jcode` on PATH. Using that preview binary's path in place of
-`jcode`, run `jcode update --channel preview` to persist the opt-in. Future
+not the old stable `kcode` on PATH. Using that preview binary's path in place of
+`kcode`, run `kcode update --channel preview` to persist the opt-in. Future
 preview updates can use the same command. To roll back, run the preview binary
 with `update --channel stable`, or reinstall the current stable release. Stable
 users are never automatically upgraded to previews.
 
-Each push to canonical `1jehuang/jcode`'s `master` starts a cancellable **15-minute
+Each push to canonical `1jehuang/kcode`'s `master` starts a cancellable **15-minute
 quiet period**. A newer push cancels the old wait and any obsolete builds. After
 the quiet period, the workflow rejects superseded SHAs and uses the same
 `scripts/check_release_ci.py` exact-commit push-CI gate as stable releases. It
@@ -35,7 +35,7 @@ binaries are currently **unsigned experimental builds**, not signed stable
 releases. FreeBSD is not included in the preview platform set.
 
 The binary version is `v1.0.0-preview.N`, supplied through the existing
-`JCODE_BUILD_SEMVER` release-build environment, without changing Cargo package
+`KCODE_BUILD_SEMVER` release-build environment, without changing Cargo package
 versions. Every native binary must report that preview version before upload.
 `N` is the workflow run number, so cancellations/failures leave intentional gaps.
 Rerunning a workflow does not allocate another number. If its tag already exists,
@@ -79,7 +79,7 @@ actionlint -shellcheck= .github/workflows/preview.yml .github/workflows/release.
    ```bash
    git push origin master
    python3 scripts/check_release_ci.py "$(git rev-parse HEAD)" \
-     --repo 1jehuang/jcode --timeout 0
+     --repo 1jehuang/kcode --timeout 0
    scripts/quick-release.sh --remote v0.98.1
    ```
 
@@ -134,7 +134,7 @@ The fast paths no longer make single-platform releases public immediately. They 
 
 ## CI release workflow
 
-A pushed `v*` tag triggers `.github/workflows/release.yml` in the canonical `1jehuang/jcode` repository:
+A pushed `v*` tag triggers `.github/workflows/release.yml` in the canonical `1jehuang/kcode` repository:
 
 ```text
 Tag push (after successful exact-SHA main/master CI)
@@ -172,20 +172,20 @@ Tag push (after successful exact-SHA main/master CI)
 
 Publication requires all nine platform files:
 
-- `jcode-linux-x86_64.tar.gz`
-- `jcode-linux-aarch64.tar.gz`
-- `jcode-macos-aarch64.tar.gz`
-- `jcode-macos-x86_64.tar.gz`
-- `jcode-windows-x86_64.exe` and `jcode-windows-x86_64.tar.gz`
-- `jcode-windows-aarch64.exe` and `jcode-windows-aarch64.tar.gz`
-- `jcode-freebsd-x86_64.tar.gz`
+- `kcode-linux-x86_64.tar.gz`
+- `kcode-linux-aarch64.tar.gz`
+- `kcode-macos-aarch64.tar.gz`
+- `kcode-macos-x86_64.tar.gz`
+- `kcode-windows-x86_64.exe` and `kcode-windows-x86_64.tar.gz`
+- `kcode-windows-aarch64.exe` and `kcode-windows-aarch64.tar.gz`
+- `kcode-freebsd-x86_64.tar.gz`
 
 A missing platform asset fails finalization and keeps a new release as a draft. Platforms build independently, but **they are not independently publishable**. Successful platforms alone are not enough. `SHA256SUMS` covers the final archives, Windows executables, and provenance file.
 
 After making the complete release public, the finalizer downloads the actual public assets and verifies their hashes and exact-SHA unpatched provenance before announcements or package-manager updates. Repeat that verification when checking a release manually:
 
 ```bash
-python3 scripts/verify_public_release.py v0.98.1 --repo 1jehuang/jcode \
+python3 scripts/verify_public_release.py v0.98.1 --repo 1jehuang/kcode \
   --sha "$(git rev-parse 'refs/tags/v0.98.1^{commit}')"
 ```
 
@@ -232,7 +232,7 @@ CC_aarch64_apple_darwin = "aarch64-apple-darwin23.5-clang"
 CXX_aarch64_apple_darwin = "aarch64-apple-darwin23.5-clang++"
 ```
 
-macOS binaries are ad-hoc signed with the stable identifier `com.jcode.cli`, using `codesign` when available and `rcodesign` otherwise. System framework dependencies such as AppKit and Security require real macOS SDK headers/framework stubs, which osxcross provides.
+macOS binaries are ad-hoc signed with the stable identifier `com.kcode.cli`, using `codesign` when available and `rcodesign` otherwise. System framework dependencies such as AppKit and Security require real macOS SDK headers/framework stubs, which osxcross provides.
 
 ## Release gate regression checks
 

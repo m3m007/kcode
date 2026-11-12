@@ -2,7 +2,7 @@
 
 ## Scope
 
-This is an observed real Jcode executable and native Unix-socket session-control
+This is an observed real Kcode executable and native Unix-socket session-control
 workflow, not a mocked provider or copied implementation. No model generation,
 message, or tool request was submitted, so this does **not** prove upstream
 Ultrafast entitlement, billing, or throughput. The normal OpenAI provider and
@@ -24,9 +24,9 @@ every Git commit. It was not used as final acceptance evidence.
 An explicitly hosted build was then attempted:
 
 ```bash
-JCODE_BUILD_GIT_HASH=$(git rev-parse --short HEAD) \
-JCODE_BUILD_GIT_DIRTY=false \
-justrust build --remote --profile selfdev --bin jcode
+KCODE_BUILD_GIT_HASH=$(git rev-parse --short HEAD) \
+KCODE_BUILD_GIT_DIRTY=false \
+justrust build --remote --profile selfdev --bin kcode
 ```
 
 Hosted compilation succeeded in 21.8 seconds, run
@@ -40,13 +40,13 @@ not a compile failure. No hosted artifact was claimed runnable.
 A local build was necessary to obtain the executable for real acceptance:
 
 ```bash
-JCODE_BUILD_GIT_HASH=$(git rev-parse --short HEAD) \
-JCODE_BUILD_GIT_DIRTY=false \
-justrust build --local --profile selfdev --bin jcode
+KCODE_BUILD_GIT_HASH=$(git rev-parse --short HEAD) \
+KCODE_BUILD_GIT_DIRTY=false \
+justrust build --local --profile selfdev --bin kcode
 ```
 
 Run `20261016-142815723-166769` passed in 18.0 seconds. The executable reported
-`jcode v0.98.15-dev (2e980f7e6)`. Its SHA-256 was
+`kcode v0.98.15-dev (2e980f7e6)`. Its SHA-256 was
 `66a2b26dc6f49bf107778015411252abdc9d312d1d7907768ecaf373eb5a88e1`.
 
 ## Isolated real runtime
@@ -55,7 +55,7 @@ The startup command was the following, where `$ACCEPTANCE_SOCKET` was a unique
 scratch directory Unix socket, not the shared daemon socket:
 
 ```bash
-JCODE_OPENAI_SERVICE_TIER=off ./target/selfdev/jcode \
+KCODE_OPENAI_SERVICE_TIER=off ./target/selfdev/kcode \
   --no-update --no-selfdev --provider openai --model gpt-6.1-sol \
   --socket "$ACCEPTANCE_SOCKET" serve
 ```
@@ -150,8 +150,8 @@ current-source executable was built in local run `20261016-151846617-649830`
 It reported `v0.98.20-dev (a45b0c122)`, SHA-256
 `921ea0a4be7ad06b1e75aeee0ec09e635257a0528e090a0959bf8d55fad4ac63`.
 It was installed under the immutable version directory, published to `current`,
-and promoted using `jcode server promote a45b0c122 --json`, then activated with
-`jcode server reload --json`. The stable channel was not changed.
+and promoted using `kcode server promote a45b0c122 --json`, then activated with
+`kcode server reload --json`. The stable channel was not changed.
 
 After handoff, actual `server:info` reported the new hash and version. Both the
 requesting session and other operator's session were present, and the operator

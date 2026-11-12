@@ -36,7 +36,7 @@ mod tests {
 
     #[test]
     fn mcp_cli_parses_supported_commands() {
-        let args = Args::try_parse_from(["jcode", "mcp", "list", "--json"]).unwrap();
+        let args = Args::try_parse_from(["kcode", "mcp", "list", "--json"]).unwrap();
         assert!(matches!(
             args.command,
             Some(Command::Mcp {
@@ -44,7 +44,7 @@ mod tests {
             })
         ));
         for no_browser in [false, true] {
-            let mut argv = vec!["jcode", "mcp", "login", "remote"];
+            let mut argv = vec!["kcode", "mcp", "login", "remote"];
             if no_browser {
                 argv.push("--no-browser");
             }
@@ -53,11 +53,11 @@ mod tests {
                 matches!(args.command, Some(Command::Mcp { action: McpCommand::Login { server, no_browser: actual } }) if server == "remote" && actual == no_browser)
             );
         }
-        let args = Args::try_parse_from(["jcode", "mcp", "logout", "remote"]).unwrap();
+        let args = Args::try_parse_from(["kcode", "mcp", "logout", "remote"]).unwrap();
         assert!(
             matches!(args.command, Some(Command::Mcp { action: McpCommand::Logout { server } }) if server == "remote")
         );
-        let args = Args::try_parse_from(["jcode", "mcp", "test", "remote"]).unwrap();
+        let args = Args::try_parse_from(["kcode", "mcp", "test", "remote"]).unwrap();
         assert!(
             matches!(args.command, Some(Command::Mcp { action: McpCommand::Test { server } }) if server == "remote")
         );
@@ -66,11 +66,11 @@ mod tests {
     #[test]
     fn mcp_cli_requires_an_explicit_action_and_login_server() {
         for argv in [
-            vec!["jcode", "mcp"],
-            vec!["jcode", "mcp", "login"],
-            vec!["jcode", "mcp", "logout"],
-            vec!["jcode", "mcp", "test"],
-            vec!["jcode", "mcp", "list", "--no-browser"],
+            vec!["kcode", "mcp"],
+            vec!["kcode", "mcp", "login"],
+            vec!["kcode", "mcp", "logout"],
+            vec!["kcode", "mcp", "test"],
+            vec!["kcode", "mcp", "list", "--no-browser"],
         ] {
             assert!(Args::try_parse_from(argv).is_err());
         }

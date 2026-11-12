@@ -28,29 +28,29 @@ impl Drop for RestoreEnv {
 fn preflight_cache_identity_tracks_account_endpoint_release_and_binary() -> Result<()> {
     let _lock = crate::storage::lock_test_env();
     let _restore = RestoreEnv::save(&[
-        "JCODE_API_KEY",
-        "JCODE_API_BASE",
-        "JCODE_CLOUD_RELEASE",
-        "JCODE_CLOUD_REMOTE_BINARY",
+        "KCODE_API_KEY",
+        "KCODE_API_BASE",
+        "KCODE_CLOUD_RELEASE",
+        "KCODE_CLOUD_REMOTE_BINARY",
     ]);
-    crate::env::set_var("JCODE_API_KEY", "offline-account-a");
-    crate::env::set_var("JCODE_API_BASE", "https://offline-a.invalid/v1");
-    crate::env::remove_var("JCODE_CLOUD_RELEASE");
-    crate::env::remove_var("JCODE_CLOUD_REMOTE_BINARY");
+    crate::env::set_var("KCODE_API_KEY", "offline-account-a");
+    crate::env::set_var("KCODE_API_BASE", "https://offline-a.invalid/v1");
+    crate::env::remove_var("KCODE_CLOUD_RELEASE");
+    crate::env::remove_var("KCODE_CLOUD_REMOTE_BINARY");
     let target = Target::default();
     let host = super::super::super::cloud_managed::HOST;
     let initial = target.preflight_key(host)?;
     assert!(!initial.contains("offline-account-a"));
-    crate::env::set_var("JCODE_API_KEY", "offline-account-b");
+    crate::env::set_var("KCODE_API_KEY", "offline-account-b");
     assert_ne!(initial, target.preflight_key(host)?);
-    crate::env::set_var("JCODE_API_KEY", "offline-account-a");
-    crate::env::set_var("JCODE_API_BASE", "https://offline-b.invalid/v1");
+    crate::env::set_var("KCODE_API_KEY", "offline-account-a");
+    crate::env::set_var("KCODE_API_BASE", "https://offline-b.invalid/v1");
     assert_ne!(initial, target.preflight_key(host)?);
-    crate::env::set_var("JCODE_API_BASE", "https://offline-a.invalid/v1");
-    crate::env::set_var("JCODE_CLOUD_RELEASE", "v99.0.0");
+    crate::env::set_var("KCODE_API_BASE", "https://offline-a.invalid/v1");
+    crate::env::set_var("KCODE_CLOUD_RELEASE", "v99.0.0");
     assert_ne!(initial, target.preflight_key(host)?);
-    crate::env::remove_var("JCODE_CLOUD_RELEASE");
-    crate::env::set_var("JCODE_CLOUD_REMOTE_BINARY", "/other/jcode");
+    crate::env::remove_var("KCODE_CLOUD_RELEASE");
+    crate::env::set_var("KCODE_CLOUD_REMOTE_BINARY", "/other/kcode");
     assert_ne!(initial, target.preflight_key(host)?);
     Ok(())
 }
@@ -60,26 +60,26 @@ fn managed_preparation_verifies_default_once_and_still_probes_custom_binary() ->
     use std::os::unix::fs::PermissionsExt;
     let _lock = crate::storage::lock_test_env();
     let _restore = RestoreEnv::save(&[
-        "JCODE_HOME",
+        "KCODE_HOME",
         "PATH",
-        "JCODE_API_KEY",
-        "JCODE_API_BASE",
-        "JCODE_CLOUD_REMOTE_BINARY",
-        "JCODE_CLOUD_FORCE_UPGRADE",
-        "JCODE_CLOUD_RELEASE",
+        "KCODE_API_KEY",
+        "KCODE_API_BASE",
+        "KCODE_CLOUD_REMOTE_BINARY",
+        "KCODE_CLOUD_FORCE_UPGRADE",
+        "KCODE_CLOUD_RELEASE",
     ]);
     let dir = tempfile::tempdir()?;
-    crate::env::set_var("JCODE_HOME", dir.path());
-    crate::env::set_var("JCODE_API_KEY", "offline-account");
+    crate::env::set_var("KCODE_HOME", dir.path());
+    crate::env::set_var("KCODE_API_KEY", "offline-account");
     // Reintroduced direct API calls must not reach any real cloud endpoint.
-    crate::env::set_var("JCODE_API_BASE", "https://127.0.0.1:9/v1");
-    crate::env::remove_var("JCODE_CLOUD_REMOTE_BINARY");
-    crate::env::remove_var("JCODE_CLOUD_FORCE_UPGRADE");
-    crate::env::remove_var("JCODE_CLOUD_RELEASE");
+    crate::env::set_var("KCODE_API_BASE", "https://127.0.0.1:9/v1");
+    crate::env::remove_var("KCODE_CLOUD_REMOTE_BINARY");
+    crate::env::remove_var("KCODE_CLOUD_FORCE_UPGRADE");
+    crate::env::remove_var("KCODE_CLOUD_RELEASE");
     let ssh = dir.path().join("ssh");
     std::fs::write(
         &ssh,
-        "#!/bin/sh\nprintf 'invocation\\n' >> \"$JCODE_HOME/calls\"\ncat >\"$JCODE_HOME/sent-script\"\n",
+        "#!/bin/sh\nprintf 'invocation\\n' >> \"$KCODE_HOME/calls\"\ncat >\"$KCODE_HOME/sent-script\"\n",
     )?;
     std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o755))?;
     crate::env::set_var("PATH", format!("{}:/usr/bin:/bin", dir.path().display()));
@@ -96,7 +96,7 @@ fn managed_preparation_verifies_default_once_and_still_probes_custom_binary() ->
         1
     );
     let custom = Target {
-        remote_binary: Some("/custom/jcode".into()),
+        remote_binary: Some("/custom/kcode".into()),
         ..Target::default()
     };
     custom.preflight(host)?;
@@ -114,19 +114,19 @@ fn concurrent_preflights_share_success_and_failed_checks_clear_marker() -> Resul
     use std::os::unix::fs::PermissionsExt;
     let _lock = crate::storage::lock_test_env();
     let _restore = RestoreEnv::save(&[
-        "JCODE_HOME",
+        "KCODE_HOME",
         "PATH",
-        "JCODE_CLOUD_REMOTE_BINARY",
-        "JCODE_CLOUD_FORCE_UPGRADE",
+        "KCODE_CLOUD_REMOTE_BINARY",
+        "KCODE_CLOUD_FORCE_UPGRADE",
     ]);
     let dir = tempfile::tempdir()?;
-    crate::env::set_var("JCODE_HOME", dir.path());
-    crate::env::remove_var("JCODE_CLOUD_REMOTE_BINARY");
-    crate::env::remove_var("JCODE_CLOUD_FORCE_UPGRADE");
+    crate::env::set_var("KCODE_HOME", dir.path());
+    crate::env::remove_var("KCODE_CLOUD_REMOTE_BINARY");
+    crate::env::remove_var("KCODE_CLOUD_FORCE_UPGRADE");
     let ssh = dir.path().join("ssh");
     std::fs::write(
         &ssh,
-        "#!/bin/sh\nprintf 'probe\\n' >> \"$JCODE_HOME/calls\"\nsleep 0.1\n[ ! -f \"$JCODE_HOME/fail\" ]\n",
+        "#!/bin/sh\nprintf 'probe\\n' >> \"$KCODE_HOME/calls\"\nsleep 0.1\n[ ! -f \"$KCODE_HOME/fail\" ]\n",
     )?;
     std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o755))?;
     crate::env::set_var("PATH", format!("{}:/usr/bin:/bin", dir.path().display()));
@@ -142,14 +142,14 @@ fn concurrent_preflights_share_success_and_failed_checks_clear_marker() -> Resul
             .count(),
         1
     );
-    crate::env::set_var("JCODE_CLOUD_FORCE_UPGRADE", "1");
+    crate::env::set_var("KCODE_CLOUD_FORCE_UPGRADE", "1");
     Target::default().preflight("offline-fixture")?;
     std::fs::write(dir.path().join("fail"), "")?;
     assert!(Target::default().preflight("offline-fixture").is_err());
     assert!(!super::super::preflight_marker().unwrap().exists());
-    crate::env::remove_var("JCODE_CLOUD_FORCE_UPGRADE");
+    crate::env::remove_var("KCODE_CLOUD_FORCE_UPGRADE");
     let changed = Target {
-        remote_binary: Some("different-jcode".into()),
+        remote_binary: Some("different-kcode".into()),
         ..Target::default()
     };
     assert!(changed.preflight("offline-fixture").is_err());
@@ -170,7 +170,7 @@ fn scripted_target(script: &str) -> Result<(tempfile::TempDir, Target)> {
 
 #[test]
 fn ssh_retry_reports_the_underlying_failure() {
-    let message = ssh_retry_message("jcode-cloud", 1, b"ssh: authentication failed\n");
+    let message = ssh_retry_message("kcode-cloud", 1, b"ssh: authentication failed\n");
     assert!(message.contains("retrying (1/3)"));
     assert!(message.ends_with("ssh: authentication failed"));
     assert!(!message.contains("dropped"));
@@ -191,14 +191,14 @@ fn account() -> CloudAccount {
 fn custom_transport_preserves_remote_argument_quoting() -> Result<()> {
     let target = Target {
         transport: Some("/bin/sh -c".to_string()),
-        remote_binary: Some("/a directory/jcode".to_string()),
+        remote_binary: Some("/a directory/kcode".to_string()),
         ..Target::default()
     };
     let command = target.remote_command("unused", &["cloud", "a'b", "two words"])?;
     let args: Vec<_> = command.get_args().collect();
     assert_eq!(args.len(), 2);
     let script = args[1].to_string_lossy();
-    assert!(script.contains(&shell_quote("/a directory/jcode")));
+    assert!(script.contains(&shell_quote("/a directory/kcode")));
     assert!(script.ends_with(&format!(
         "{} {} {}",
         shell_quote("cloud"),

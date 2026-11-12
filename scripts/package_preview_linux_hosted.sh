@@ -4,8 +4,8 @@ set -euo pipefail
 [[ $# == 0 ]] || { echo 'usage: package_preview_linux_hosted.sh' >&2; exit 1; }
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
-artifact=jcode-linux-x86_64
-binary="$repo_root/target/x86_64-unknown-linux-gnu/release/jcode"
+artifact=kcode-linux-x86_64
+binary="$repo_root/target/x86_64-unknown-linux-gnu/release/kcode"
 image='quay.io/pypa/manylinux2014_x86_64@sha256:2bd80fa8fca6b775a913b7e42fa410c5f2246fb6f7f8f3280b5d562e5ca5d63f'
 [[ -x $binary ]] || { echo "missing hosted executable: $binary" >&2; exit 1; }
 # Runtime acceptance is separate from the hosted client's structured ELF checks.
@@ -13,12 +13,12 @@ image='quay.io/pypa/manylinux2014_x86_64@sha256:2bd80fa8fca6b775a913b7e42fa410c5
 docker run --rm --read-only --network none --cap-drop ALL \
   --security-opt no-new-privileges --user 65534:65534 \
   --tmpfs /tmp:rw,nosuid,nodev,size=64m \
-  --mount "type=bind,src=$binary,dst=/input/jcode,readonly" \
+  --mount "type=bind,src=$binary,dst=/input/kcode,readonly" \
   --entrypoint /bin/bash "$image" -c '
     set -euo pipefail
-    /input/jcode --no-update --no-selfdev --version
+    /input/kcode --no-update --no-selfdev --version
     for command in receive credentials router-credentials cancel-return; do
-      /input/jcode --no-update --no-selfdev cloud "$command" --help >/dev/null
+      /input/kcode --no-update --no-selfdev cloud "$command" --help >/dev/null
     done
   '
 mkdir -p dist
@@ -45,7 +45,7 @@ if [ -n "${LD_LIBRARY_PATH:-}" ]; then
 else
   export LD_LIBRARY_PATH="$self_dir"
 fi
-exec "$self_dir/jcode-linux-x86_64.bin" "$@"
+exec "$self_dir/kcode-linux-x86_64.bin" "$@"
 WRAPPER
 chmod 755 "$stage/$artifact"
 tar czf "$stage/$artifact.tar.gz" -C "$stage" "$artifact" "$artifact.bin"
