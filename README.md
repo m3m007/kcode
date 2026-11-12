@@ -142,7 +142,7 @@ This fork adds a disciplined execution layer on top of kcode's existing swarm an
 
 **When to use kcode v2 vs upstream:**
 
-- Use upstream kcode for interactive TUI sessions, OAuth flows, and self-dev mode.
+- Use upstream jcode for interactive TUI sessions, OAuth flows, and self-dev mode.
 - Use kcode v2 for headless ticket execution where you need the agent to stop on its own.
 
 [Full spec](docs/kcode-v2-contract-spec.md) · [Tool policy details](docs/TOOL-POLICY.md) · [Changelog](changelog)
