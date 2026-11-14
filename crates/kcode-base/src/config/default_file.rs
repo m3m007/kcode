@@ -581,6 +581,16 @@ enabled = false
 # Maximum number of allow-listed calls in flight at once. 1 serializes them;
 # larger values overlap them. 8-core hosts measure well at 4.
 max_concurrency = 1
+# Whether a configured [hooks] pre_tool gate may run inside each parallel worker
+# (once per call) instead of forcing the whole round sequential.
+#
+# The hook already runs per call inside the tool registry, so parallelism never
+# bypasses it -- the default only serializes the round around it. Set true only
+# if your hook is a pure per-call function of its input: no cross-call state,
+# counters, ordering, or rate limits that could race. Leave it false for a
+# stateful or order-sensitive hook (the round then stays sequential, and kcode
+# logs a one-time warning so the disable is never silent).
+run_hooks_in_parallel = false
 
 [acp]
 # Agent Client Protocol adapter compatibility profile: standard, extended, or full.
@@ -1119,6 +1129,10 @@ mod tests {
         assert!(
             config.parallel_tools.read_only_tools.is_empty(),
             "the shipped user config must not name any tool as parallel-safe"
+        );
+        assert!(
+            !config.parallel_tools.run_hooks_in_parallel,
+            "the shipped user config must keep a configured pre_tool hook serializing the round"
         );
         assert!(
             config.display.show_thinking,

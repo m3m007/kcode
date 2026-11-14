@@ -48,6 +48,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use futures::future::join_all;
@@ -260,17 +261,53 @@ impl ParallelEligibility<'_> {
     }
 }
 
-/// Whether a `pre_tool` gate or input transformer is configured.
+/// Whether a `pre_tool` gate is configured.
 ///
-/// Both run inside `Registry::execute`, between dispatch and the tool body, and
-/// both can rewrite a call's input. Running them once per call *before*
-/// dispatching (the Qwen Code PR #2434 approach) would let the parallel path
-/// start with inputs the transformer has not seen yet, so a transformer that
-/// adds a path could hand one call a path another call already used. Rather
-/// than accept that, the parallel path steps aside entirely and the round runs
-/// on the unchanged sequential path, which calls them per call in order.
+/// This is the *conservative default's* trigger, not a statement that the two
+/// features are incompatible. The hook runs per call inside `Registry::execute`
+/// (`crates/kcode-app-core/src/tool/mod.rs`, between dispatch and the tool
+/// body), and the parallel path calls that same `Registry::execute` from each
+/// worker, so enabling parallelism never bypasses the hook — it only lets it run
+/// concurrently, once per call.
+///
+/// The original rationale for stepping aside was that a transformer might add a
+/// path one call could share with another. That reasoning holds only for a hook
+/// whose decision depends on **cross-call** state (session history, counters, a
+/// shared ledger, rate limits), which kcode cannot classify statically. So the
+/// safe default stays sequential, and the operator opts in per config:
+///
+/// - `run_hooks_in_parallel = false` (default): any configured `pre_tool` hook
+///   keeps the round sequential, and the disable is reported once per process
+///   via [`warn_parallel_disabled_by_hooks_once`] instead of being silent.
+/// - `run_hooks_in_parallel = true`: the operator asserts their hook is a pure
+///   per-call function of its input. The round runs concurrently and the hook
+///   runs inside each worker. The residual hazard is fail-closed: a
+///   state-dependent hook can only *block* a call it would have allowed, never
+///   pass one it would have blocked.
 pub(super) fn parallel_disabled_by_hooks() -> bool {
     crate::hooks::hook_configured("pre_tool")
+}
+
+/// Set once `warn_parallel_disabled_by_hooks_once` has logged, so a long-lived
+/// session does not repeat the same line for every round.
+static WARNED_PARALLEL_DISABLED_BY_HOOKS: AtomicBool = AtomicBool::new(false);
+
+/// Report, once per process, that a configured `pre_tool` hook kept this round on
+/// the sequential path.
+///
+/// The interlock is invisible by design (the seam simply returns an empty set),
+/// which made the feature look broken rather than deliberately disabled. One
+/// `WARN` per process keeps the log readable while still telling the operator
+/// exactly which knob changes the behavior.
+pub(super) fn warn_parallel_disabled_by_hooks_once() {
+    if WARNED_PARALLEL_DISABLED_BY_HOOKS.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    crate::logging::warn(
+        "[parallel_tools] a pre_tool hook is configured, so this round runs sequentially; \
+         set [parallel_tools] run_hooks_in_parallel = true to run the hook inside each \
+         parallel worker instead",
+    );
 }
 
 impl Agent {
@@ -287,7 +324,8 @@ impl Agent {
     /// nothing and returns an empty set, which leaves the caller's sequential
     /// loop executing every call exactly as it did before.
     ///
-    /// The parallel path is skipped when a `pre_tool` hook is configured, see
+    /// The parallel path is skipped when a `pre_tool` hook is configured, unless
+    /// the operator opted in with `run_hooks_in_parallel`, see
     /// [`parallel_disabled_by_hooks`].
     pub(super) async fn execute_parallelizable_tools(
         &mut self,
@@ -297,7 +335,14 @@ impl Agent {
         event_tx: Option<&mpsc::UnboundedSender<ServerEvent>>,
     ) -> Result<HashSet<usize>> {
         let handled: HashSet<usize> = HashSet::new();
-        if !cfg.enabled || parallel_disabled_by_hooks() {
+        if !cfg.enabled {
+            return Ok(handled);
+        }
+        if parallel_disabled_by_hooks() && !cfg.run_hooks_in_parallel {
+            // The operator has not asserted their hook is per-call-pure, so the
+            // round stays sequential. Say so once: a silent interlock reads as a
+            // broken feature, not a deliberate one.
+            warn_parallel_disabled_by_hooks_once();
             return Ok(handled);
         }
 

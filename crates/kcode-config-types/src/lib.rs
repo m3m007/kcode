@@ -551,6 +551,22 @@ pub struct ParallelToolsConfig {
     /// positive number never becomes an unbounded fan-out, and values above
     /// the run's length are clamped to it.
     pub max_concurrency: usize,
+
+    /// Whether a configured `pre_tool` hook may run *inside each parallel
+    /// worker* (once per call) instead of forcing the whole round sequential.
+    ///
+    /// A `pre_tool` hook already runs per call inside `Registry::execute`,
+    /// which the parallel path uses unchanged, so the hook is never bypassed by
+    /// parallelism — only serialized by the conservative default. Setting this
+    /// to `true` is the operator's assertion that their hook is a **pure
+    /// per-call function of its input**: no cross-call state, counters,
+    /// ordering, or rate limits whose effects would race under concurrency.
+    ///
+    /// Default `false` preserves the conservative behavior: any configured
+    /// `pre_tool` hook keeps the round sequential (and logs a one-time warning
+    /// so the disable is never silent). A hook that is order-sensitive or
+    /// stateful must leave this `false`.
+    pub run_hooks_in_parallel: bool,
 }
 
 impl Default for ParallelToolsConfig {
@@ -559,6 +575,7 @@ impl Default for ParallelToolsConfig {
             enabled: false,
             read_only_tools: Vec::new(),
             max_concurrency: 1,
+            run_hooks_in_parallel: false,
         }
     }
 }

@@ -280,6 +280,9 @@ fn enabled_config(tools: &[&str], max_concurrency: usize) -> crate::config::Para
         enabled: true,
         read_only_tools: tools.iter().map(|name| name.to_string()).collect(),
         max_concurrency,
+        // The safe default: a configured pre_tool hook keeps the round
+        // sequential. Tests that need the opt-in state it explicitly.
+        run_hooks_in_parallel: false,
     }
 }
 
@@ -954,6 +957,7 @@ async fn a_populated_allow_list_does_not_override_the_master_switch() {
         enabled: false,
         read_only_tools: vec!["read".to_string()],
         max_concurrency: 4,
+        run_hooks_in_parallel: false,
     };
     let (mut agent, _requests, _sandbox) = probe_agent().await;
     let calls = vec![
@@ -983,6 +987,7 @@ async fn an_empty_allow_list_parallelizes_nothing() {
         enabled: true,
         read_only_tools: Vec::new(),
         max_concurrency: 4,
+        run_hooks_in_parallel: false,
     };
     let (mut agent, _requests, _sandbox) = probe_agent().await;
     let calls = vec![
@@ -1077,4 +1082,185 @@ async fn a_single_read_only_call_is_left_sequential() {
         appended_tool_results(&agent).is_empty(),
         "a lone call must be left for the sequential loop to execute"
     );
+}
+
+/// The `pre_tool` hook and the parallel path both work when the operator opts in.
+///
+/// This is the proof that the two features are not mutually exclusive. A
+/// `pre_tool` hook already runs once per call inside `Registry::execute`, which
+/// each parallel worker calls, so opting in must produce **all three** at once:
+///
+/// 1. the hook ran (the marker file has one line per call, not one per round);
+/// 2. the calls overlapped (at least two in flight at the same time);
+/// 3. the results merged in the model's order even though completion was
+///    reversed (so the transcript bytes, and the prompt cache, are unchanged).
+///
+/// The hook is a real config-file hook, not a test seam: it is written into the
+/// sandbox's `KCODE_HOME/config.toml` and invoked as a subprocess, exactly as an
+/// operator's script would be.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_pre_tool_hook_runs_inside_parallel_workers_when_opted_in() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let (mut agent, _requests, sandbox) = probe_agent().await;
+    let root = sandbox.root().to_path_buf();
+
+    // A real allow-everything gate script: one marker line per invocation.
+    let hook_script = root.join("allow.sh");
+    let script_body = format!("#!/bin/sh\necho ran >> \"{}/hook.marker\"\nexit 0\n", root.display());
+    let wrote_script = std::fs::write(&hook_script, script_body).is_ok()
+        && std::fs::set_permissions(&hook_script, std::fs::Permissions::from_mode(0o755)).is_ok();
+    assert!(
+        wrote_script,
+        "the sandbox hook script must be writable and executable"
+    );
+
+    // The operator's config: the hook is on, and they assert it is per-call-pure.
+    let config_toml = format!(
+        "[hooks]\npre_tool = \"{}/allow.sh\"\n\n[parallel_tools]\nenabled = true\nrun_hooks_in_parallel = true\nread_only_tools = [\"read\"]\nmax_concurrency = 4\n",
+        root.display()
+    );
+    assert!(
+        std::fs::write(root.join("config.toml"), config_toml).is_ok(),
+        "the sandbox config must be writable"
+    );
+    crate::config::invalidate_config_cache();
+    // Guard: if this is false the rest of the test would measure a no-hook run
+    // and the marker assertion would fail for the wrong reason.
+    assert!(
+        parallel_disabled_by_hooks(),
+        "the sandbox config must actually configure a pre_tool hook"
+    );
+
+    // The operator's assertion, read from the config the same way production does.
+    let parallel_cfg = crate::config::config().parallel_tools.clone();
+    assert!(parallel_cfg.enabled, "the sandbox config must enable the feature");
+    assert!(
+        parallel_cfg.run_hooks_in_parallel,
+        "the sandbox config must opt in to running the hook inside parallel workers"
+    );
+    assert!(
+        parallel_cfg.allows_parallel("read"),
+        "read must be on the allow-list"
+    );
+
+    // One probe that measures overlap AND reverse completion order.
+    let started = Arc::new(AtomicUsize::new(0));
+    let in_flight = Arc::new(AtomicUsize::new(0));
+    let max_in_flight = Arc::new(AtomicUsize::new(0));
+    let completion_order = Arc::new(StdMutex::new(Vec::new()));
+    agent
+        .registry
+        .register(
+            "read".into(),
+            Arc::new(HookedOverlapProbe {
+                started: started.clone(),
+                in_flight: in_flight.clone(),
+                max_in_flight: max_in_flight.clone(),
+                completion_order: completion_order.clone(),
+            }),
+        )
+        .await;
+
+    let calls = vec![
+        call("c1", "read", "a"),
+        call("c2", "read", "ab"),
+        call("c3", "read", "abc"),
+    ];
+    let sdk: HashMap<String, (String, bool)> = HashMap::new();
+    let outcome = agent
+        .execute_parallelizable_tools(&calls, &sdk, &parallel_cfg, None)
+        .await;
+    if let Err(error) = &outcome {
+        // Surface it in the log, then let the assertions below fail loudly: the
+        // seam returning an error is not a result this test can interpret.
+        crate::logging::warn(&format!(
+            "the opted-in parallel path must not fail: {error}"
+        ));
+    }
+    let handled = outcome.unwrap_or_default();
+    assert_eq!(handled, HashSet::from([0, 1, 2]));
+
+    // (i) The hook ran once per call, inside the workers.
+    let marker = root.join("hook.marker");
+    let marker_lines = std::fs::read_to_string(&marker)
+        .map(|contents| contents.lines().count())
+        .unwrap_or_default();
+    assert_eq!(
+        marker_lines,
+        3,
+        "the pre_tool hook must run once per call inside the parallel workers, so 3 calls must leave 3 marker lines (got {marker_lines})"
+    );
+
+    // (ii) The calls overlapped.
+    let overlap = max_in_flight.load(Ordering::SeqCst);
+    assert!(
+        overlap >= 2,
+        "opted-in parallel calls must overlap: max in flight was {overlap}"
+    );
+    assert_eq!(started.load(Ordering::SeqCst), 3, "every call must run");
+
+    // (iii) Model order, not completion order.
+    let ids = tool_result_ids(&appended_tool_results(&agent));
+    assert_eq!(
+        ids,
+        vec!["c1".to_string(), "c2".to_string(), "c3".to_string()],
+        "results must merge in the model's call order"
+    );
+    let order = match completion_order.lock() {
+        Ok(order) => order.clone(),
+        Err(poisoned) => poisoned.into_inner().clone(),
+    };
+    assert_eq!(
+        order,
+        vec!["c3".to_string(), "c2".to_string(), "c1".to_string()],
+        "the probe must finish in reverse order, so the merge is proven to ignore completion order"
+    );
+}
+
+/// Probe for the opt-in proof: an in-flight gauge plus reverse-completion sleeps,
+/// recording both the overlap and the true completion order.
+#[cfg(unix)]
+struct HookedOverlapProbe {
+    started: Arc<AtomicUsize>,
+    in_flight: Arc<AtomicUsize>,
+    max_in_flight: Arc<AtomicUsize>,
+    completion_order: Arc<StdMutex<Vec<String>>>,
+}
+
+#[cfg(unix)]
+#[async_trait]
+impl Tool for HookedOverlapProbe {
+    fn name(&self) -> &str {
+        "read"
+    }
+
+    fn description(&self) -> &str {
+        "Overlap and completion-order probe"
+    }
+
+    fn parameters_schema(&self) -> serde_json::Value {
+        serde_json::json!({"type": "object"})
+    }
+
+    async fn execute(&self, input: serde_json::Value, ctx: ToolContext) -> Result<ToolOutput> {
+        let current = self.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+        self.max_in_flight.fetch_max(current, Ordering::SeqCst);
+        self.started.fetch_add(1, Ordering::SeqCst);
+        let path = input
+            .get("path")
+            .and_then(|value| value.as_str())
+            .unwrap_or("")
+            .to_string();
+        // Longer paths sleep less, so the LAST call finishes FIRST.
+        let depth = path.chars().count() as u64;
+        let sleep_ms = 120u64.saturating_sub(depth * 15);
+        tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+        if let Ok(mut order) = self.completion_order.lock() {
+            order.push(ctx.tool_call_id);
+        }
+        self.in_flight.fetch_sub(1, Ordering::SeqCst);
+        Ok(ToolOutput::new(format!("contents of {path}")))
+    }
 }
