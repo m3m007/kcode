@@ -45,6 +45,11 @@ libc = "0.2"             # Unix system calls (flock)
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
+# Symbol extraction for the built-in `search_index` tool (src/search_index.rs).
+# Same versions already used by kcode-enforcement and kcode-swarm, so this adds
+# no new crate to the graph.
+tree-sitter = "0.25"
+tree-sitter-rust = "0.23"
 urlencoding = "2"        # URL encoding for web search
 uuid = { version = "1", features = ["v4", "v5"] }
 proctitle = "0.1"

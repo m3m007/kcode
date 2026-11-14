@@ -592,6 +592,36 @@ max_concurrency = 1
 # logs a one-time warning so the disable is never silent).
 run_hooks_in_parallel = false
 
+[search_index]
+# Built-in metadata file-search index backing the `search_index` tool.
+#
+# Answers "where is X" (a file or a symbol) from a maintained index in ONE
+# tool call, instead of N model-driven greps that each cost a full cache read.
+#
+# This is a built-in tool, NOT a preloaded MCP server: the research that
+# motivated it measured an MCP-delivered index at 1.66x tokens plus an extra
+# ToolSearch turn, so the schema is not preloaded and no MCP round trip exists.
+#
+# Determinism is the point: the same query returns byte-identical bytes on
+# every run (ordered by path, line, kind, name with no clocks, no hash-map
+# iteration order, no floats), so answering a question cannot perturb the
+# provider prompt cache.
+#
+# Disabled by default: with enabled = false the tool answers with a disabled
+# notice and never creates or touches an index file.
+# Env overrides: KCODE_SEARCH_ENABLED, KCODE_SEARCH_INDEX_PATH,
+# KCODE_SEARCH_REFRESH, KCODE_SEARCH_MAX_RESULTS.
+enabled = false
+# Path of the SQLite index, relative to the working directory (or absolute).
+index_path = ".kcode/search/index.db"
+# When the index is refreshed. on_write refreshes before every call (always
+# fresh, cheap because the refresh is incremental); on_query refreshes only when
+# the freshness check says the index is stale; manual never refreshes
+# automatically and the answer reports stale.
+refresh = "on_write"
+# Maximum results returned per call, so a broad query cannot flood context.
+max_results = 50
+
 [acp]
 # Agent Client Protocol adapter compatibility profile: standard, extended, or full.
 # standard emits only spec-compatible ACP messages.
@@ -1133,6 +1163,23 @@ mod tests {
         assert!(
             !config.parallel_tools.run_hooks_in_parallel,
             "the shipped user config must keep a configured pre_tool hook serializing the round"
+        );
+        assert!(
+            !config.search_index.enabled,
+            "the shipped user config must leave the search_index tool opt-in"
+        );
+        assert_eq!(
+            config.search_index.index_path, ".kcode/search/index.db",
+            "the shipped user config must keep the default index path"
+        );
+        assert_eq!(
+            config.search_index.effective_refresh(),
+            "on_write",
+            "the shipped user config must refresh the index before every call"
+        );
+        assert!(
+            config.search_index.max_results > 0,
+            "the shipped user config must bound the answer size"
         );
         assert!(
             config.display.show_thinking,

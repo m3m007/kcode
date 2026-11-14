@@ -92,6 +92,7 @@ pub mod safety;
 pub mod scratch_maintenance;
 pub mod session;
 pub mod session_list_cache;
+pub mod search_index;
 pub mod session_metrics;
 pub mod session_telemetry;
 pub mod side_panel;

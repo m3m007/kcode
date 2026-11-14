@@ -11,7 +11,7 @@ pub use kcode_config_types::{
     LaunchHotkeyEntry, LaunchHotkeysConfig, MarkdownSpacingMode, MenubarConfig, NamedProviderAuth,
     NamedProviderConfig, NamedProviderModelConfig, NamedProviderType, NativeScrollbarConfig,
     NotificationsConfig, PowerConfig, ProgressConfig, ContextPruneConfig, ParallelToolsConfig,
-    ProviderConfig,
+    SearchIndexConfig, ProviderConfig,
     ReasoningDisplayMode, ResumeOpenElsewhere, ResumeTimeMode, SafetyConfig, SessionConfig,
     SessionPickerResumeAction, SponsorsConfig, SwarmSpawnMode, SwarmStripLayout, TerminalConfig,
     UpdateChannel, WebSearchConfig, WebSearchEngine,
@@ -743,6 +743,11 @@ pub struct Config {
     /// Disabled by default: `enabled = false` takes the exact sequential code
     /// path kcode always took.
     pub parallel_tools: ParallelToolsConfig,
+
+    /// Built-in metadata file-search index backing the `search_index` tool.
+    /// Disabled by default: `enabled = false` makes the tool a no-op that
+    /// returns the disabled notice without creating or touching an index.
+    pub search_index: SearchIndexConfig,
 
     /// Power-management configuration (prevent sleep while streaming)
     pub power: PowerConfig,

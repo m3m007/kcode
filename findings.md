@@ -399,3 +399,159 @@ parallel worker." The default (`false`) is unchanged behavior, and the residual 
 All four file changes applied. Done-check (`cargo check --workspace`, `cargo test -p kcode-app-core --lib
 -- parallel_tools`, default-config test) is being run in the isolated `.target` — see `.kcode/progress.md`
 for the live log and the verbatim outputs.
+
+---
+
+# SEARCH-IDX — `search_index` tool (session 2026-11-14T15:11Z, TASK-SEARCH-IDX, Tier 2 #6)
+
+> Appended per the dispatch-context progress-doc convention. Everything below carries its source.
+> This section supersedes nothing above it; it is a new task's log in the same live file.
+
+## Run provenance (no-forensics rule)
+
+| Field | Value | Verified how |
+|---|---|---|
+| cargo | `/home/hermes/.cargo/bin/cargo` — `cargo 1.99.0 (5f94df478 2026-08-27)` | `which cargo`; `cargo --version` |
+| rustc | `rustc 1.99.0 (b940084d7 2026-09-28)` | `rustc --version` |
+| Worktree | `/home/hermes/projects/kcode-wt/k3k4-merge` | `pwd` |
+| Branch | `k3k4-merge` | `git branch --show-current` |
+| HEAD at session start | `8609f34bca68d941840699d3c602c226dc29daf6` | `git rev-parse HEAD` |
+| CARGO_TARGET_DIR | `$PWD/.target` (per-worktree, isolated) | exported before every cargo command |
+| Shared target dir | **never used** (`/home/hermes/.cargo-target` is forbidden) | n/a |
+
+Done-check commands (all inside the worktree, `CARGO_TARGET_DIR=$PWD/.target`):
+
+```sh
+cargo check --workspace
+cargo test -p kcode-app-core --lib -- search_index   # exact filter recorded at run time
+```
+
+## S-01 — reflex-search resolves from crates.io (OBSERVED 2026-11-14T14:11Z, /tmp/rfxprobe)
+
+```sh
+cargo add reflex-search --dry-run   # in a scratch project, NEVER in the worktree
+```
+Output: `Adding reflex-search v2.3.1 to dependencies`, `warning: aborting add due to dry run`.
+Then `cargo generate-lockfile` in `/tmp/rfxprobe` resolved **v2.3.1** and locked **393 packages**
+(`grep -c "name = " Cargo.lock` → 394, the 394th being the probe itself).
+
+So the crate is *available*. The task's condition is "**if it integrates cleanly**" — availability is not that.
+
+## S-02 — reflex-search's dependency graph is a CLI/TUI/server binary, not a library (OBSERVED 2026-11-14T14:11Z)
+
+`/tmp/rfxprobe/Cargo.lock:2171-2191` — the crate's direct dependencies:
+`anyhow, async-trait, axum, blake3, chrono, clap, crossterm, dirs, env_logger, flate2, globset,
+ignore, indicatif, json5, log, memchr, …`
+
+Transitive closure (`grep -oP 'name = "\K[^"]+' Cargo.lock | sort -u`) contains the whole
+**TUI + HTTP server** stack: `axum`, `ratatui`, `syntect`, `tachyonfx`, `termimad`, `quinn`,
+`reqwest`, `tokio-rustls`, `rustls`, `notify`, `rayon`, `onig` (regex engine), `pulldown-cmark`,
+`coolor`/`colorsys`, `crokey`, `minimad`. It also carries `rusqlite`+`libsqlite3-sys`,
+`tree-sitter` + 15 grammars.
+
+Why that is disqualifying *for kcode*:
+
+1. kcode vendors a **patched** ratatui at `vendor/ratatui-kcode` (directory verified live). Two
+   ratatui majors in one graph cannot be unified by cargo — linking reflex would either force a
+   ratatui version conflict or pull the unpatched ratatui back in.
+2. It adds a second async HTTP stack (`axum`/`quinn`/`reqwest`/`tokio-rustls`) to a harness that
+   already has its own provider HTTP stack.
+3. `cargo check --workspace` is the done-check; a ~390-crate addition turns that check into a
+   reflex-upstream health check, for a feature that ships **default-off**.
+4. The measured win in `RESEARCH-index-and-parallel.md` belongs to reflex's **CLI/plugin** route
+   (0.82x–0.96x) and its MCP route measures *worse* (1.66x + an extra turn). Linking the library
+   is a third, unmeasured delivery mode: it inherits the full cost without inheriting any
+   measurement. The task's "built-in tool, NOT an MCP server" is what the research recommends,
+   and a built-in tool does not need reflex's TUI/server code.
+
+## S-03 — every primitive a kcode-owned index needs is ALREADY in the workspace (OBSERVED 2026-11-14T14:11Z)
+
+| Primitive | Present | Evidence |
+|---|---|---|
+| SQLite, bundled (no system lib), FTS5 included | **yes** | `crates/kcode-base/Cargo.toml:47` `rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }` |
+| tree-sitter | **yes** | referenced by `crates/kcode-app-core/Cargo.toml`, `crates/kcode-enforcement/Cargo.toml`, `crates/kcode-swarm/Cargo.toml` |
+| Path-vendored dependency precedent | **yes** | `crates/kcode-app-core/Cargo.toml` ~line 114 `context-prune = { path = "../../vendor/context-prune" }`, gated at runtime by `[context_prune]` |
+
+`rusqlite`'s `bundled` feature compiles SQLite from source into the binary, and SQLite's bundled
+source ships the FTS5 extension — so a kcode-owned FTS5 index adds **zero new crates**.
+
+## S-04 — the pattern to copy already exists in this repo (OBSERVED 2026-11-14T14:11Z)
+
+`crates/kcode-app-core/src/tool/session_search_index.rs` (654 lines), `session_search.rs` (1869),
+`session_search_tests.rs` (749) are an existing **config-gated, incremental, index-backed tool**.
+
+- registration `crates/kcode-app-core/src/tool/mod.rs:486-487`
+  `Self::insert_tool_timed(&mut m, &mut timings, "session_search", session_search::SessionSearchTool::new);`
+- module decls `mod.rs:48-49`
+- `impl Tool for SessionSearchTool` at `session_search.rs:291` — `name`, `description`,
+  `parameters_schema`, `async fn execute(&self, input: Value, ctx: ToolContext) -> Result<ToolOutput>`
+- input idiom: `#[derive(Debug, Deserialize)] struct SearchInput` with `#[serde(default)]` optionals
+- validation idiom: `Ok(ToolOutput::new(message).with_title("session_search"))` for user-correctable
+  input rather than `Err` (`session_search.rs:400-410`)
+- `intent` schema helper: `super::intent_schema_property()`
+- warmup spawner precedent: `pub(crate) use session_search::spawn_recent_index_warmup;` (`mod.rs:109`)
+
+=> REUSE-OVER-GREENFIELD points at porting this design to the filesystem domain. Not a new engine,
+not a new index format.
+
+## S-05 — the config-gating precedent is `[parallel_tools]`: exactly 4 files (OBSERVED 2026-11-14T14:12Z)
+
+1. Struct `ParallelToolsConfig` — `crates/kcode-config-types/src/lib.rs` ~530-595: `#[serde(default)]`,
+   `impl Default { enabled: false, read_only_tools: vec![], max_concurrency: 1, run_hooks_in_parallel: false }`,
+   plus an `allows_parallel(&self, name)` helper. Env names documented in the doc comment.
+2. Field on `Config` — `crates/kcode-base/src/config.rs:745` `pub parallel_tools: ParallelToolsConfig,`
+3. Env overrides — `crates/kcode-base/src/config/env_overrides.rs:533-555`: `parse_env_bool` for the
+   bool, `v.trim().parse::<usize>()` for the number, list vars split on `[',', ' ', '\n', '\t', '\r']`
+   with the documented rule "an explicitly empty value restores the default".
+4. Shipped template + its own assertions — `crates/kcode-base/src/config/default_file.rs:561-591`
+   (template) and `:1125-1134` (`assert!(!config.parallel_tools.enabled)`,
+   `assert_eq!(config.parallel_tools.max_concurrency, 1)`, `read_only_tools.is_empty()`,
+   `assert!(!config.parallel_tools.run_hooks_in_parallel)`).
+
+Consumers read `crate::config::config().parallel_tools` (`agent/turn_loops.rs:1208`,
+`agent/turn_streaming_mpsc.rs:1466`). `search_index` copies this path verbatim, so
+`disabled = no-op` is proven in the repo's own idiom.
+
+## S-06 — DECISION: integration mode (the answer the task asks to be stated)
+
+**DECISION (2026-11-14T14:12Z): hand-rolled, kcode-owned SQLite FTS5 + tree-sitter index, modeled
+on reflex-search's `meta.db` design and the codegraph-rust determinism contract. reflex-search is
+NOT linked as a dependency.**
+
+Reasons, each tied to evidence above:
+
+1. **Not a clean integration** (S-02): `has_lib: true` is true, but the crate resolves into ~390
+   packages including a second ratatui (kcode vendors a patched one), a second HTTP stack, and a
+   terminal UI stack. The task's condition "if it integrates cleanly" is not met.
+2. **The measured win is not the library's** (S-02 point 4): the research's 0.82x–0.96x figure is
+   the CLI/plugin route; the MCP route is 1.66x worse. Linking the lib is an unmeasured third route.
+3. **Reuse-over-greenfield is satisfied more strongly by the hand-roll** (S-03, S-04): what the
+   research actually validates are reflex's *design contracts* — meta.db (SQLite file metadata +
+   symbol cache + freshness by size/mtime/content-hash, `can_trust_results` flag), byte-identical
+   index files across a rewrite, stable path+line ordering, and codegraph-rust's
+   "no model calls, no embeddings, canonical output, byte-stable fixtures" contract. Those
+   contracts are implemented in kcode-owned code on deps already in the graph, next to an existing
+   incremental index tool in this very repo.
+4. **Asymmetric cost of being wrong**: ~390 crates for a default-off feature is expensive to undo
+   and makes the done-check depend on an upstream project's health. A kcode-owned module is cheap
+   to undo and is off by default anyway.
+
+**Deviation from the literal task text (flagged per SPEC-PRECEDENCE):** the task says "back with
+reflex-search as a path/crate dependency **if it integrates cleanly**, else hand-roll … State
+which." The hand-roll branch is taken; this section is the state-which-and-why.
+
+## S-07 — DONE-CHECK mapping (so the final report can be honest)
+
+| Requirement | How it will be proven |
+|---|---|
+| `cargo check --workspace` exit 0 | run in the worktree with `CARGO_TARGET_DIR=$PWD/.target`, background, exit code quoted |
+| query returns correct location | unit test over a fixture tree: query a symbol, assert the exact `path:line` |
+| byte-identical across 2 runs | test renders the same query twice and asserts byte equality, plus a full rebuild of the index asserting identical rendered bytes |
+| disabled = no-op | mirror of `default_file.rs:1125-1134` (default has `enabled == false`) + a test that a disabled config returns the disabled notice without building/touching an index |
+| behavioral proof, ONE call | run the real tool implementation against a real query, show the compact ranked list from a single call, contrasted with the multi-grep alternative |
+
+## Open items
+
+- `blake3` availability in the *kcode* graph is inferred from the reflex resolution list (S-02) and
+  will be confirmed by `cargo check`. If it is absent, content hashing falls back to a kcode-internal
+  hash; no crate is added either way.

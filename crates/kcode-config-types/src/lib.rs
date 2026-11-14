@@ -589,6 +589,102 @@ impl ParallelToolsConfig {
     }
 }
 
+/// Built-in metadata file-search index backing the `search_index` tool.
+///
+/// Answers "where is X" (a file or a symbol) from a maintained index in ONE
+/// tool call instead of N model-driven greps. Filesystem search burns turns
+/// and each turn is a full cache read, so the index exists to collapse that
+/// fan-out into a single deterministic call.
+///
+/// **This is a built-in kcode tool, not a preloaded MCP server.** The research
+/// that motivated it (`RESEARCH-index-and-parallel.md`) measured an MCP-delivered
+/// index at 1.66x tokens plus an extra ToolSearch turn, while the built-in route
+/// is what the tool-surface recommendation actually calls for.
+///
+/// **Determinism / cache-safety is the whole point.** kcode protects prompt
+/// caching with an append-only context, so the same query must return
+/// byte-identical bytes on every run: results are ordered by
+/// `(path, line, kind, name)` with `COLLATE BINARY` and rendered by a single
+/// pure formatter with no clocks, no hash-map iteration order, and no floats.
+/// This is the contract `codegraph-rust` states (no model calls, no embeddings,
+/// canonical output guarded by byte-stable fixtures) and it is copied here.
+///
+/// **Refresh is incremental and freshness is explicit.** Files are fingerprinted
+/// by size, mtime and content hash (never by commit), only changed/new/removed
+/// paths are rewritten, and the answer carries a freshness flag so the model
+/// knows when the index could not be trusted. That mirrors reflex-search's
+/// `meta.db` + `can_trust_results` design, which is the proven shape for this.
+///
+/// Defaults to `enabled = false` — with the switch off the tool answers with a
+/// disabled notice and never creates or touches an index file.
+///
+/// Env overrides: `KCODE_SEARCH_ENABLED`, `KCODE_SEARCH_INDEX_PATH`,
+/// `KCODE_SEARCH_REFRESH`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SearchIndexConfig {
+    /// Master switch. `false` (the default) makes `search_index` a no-op: it
+    /// returns the disabled notice without opening, creating, or writing any
+    /// index file.
+    pub enabled: bool,
+
+    /// Path of the SQLite index, relative to the working directory (or
+    /// absolute). Empty restores the default. No path is hardcoded in Rust
+    /// beyond this config default, which is itself overridable.
+    pub index_path: String,
+
+    /// When the index is refreshed:
+    /// - `on_write`: every tool call refreshes first (default) — always fresh,
+    ///   and cheap because the refresh is incremental.
+    /// - `on_query`: refresh only when the freshness check says the index is
+    ///   stale.
+    /// - `manual`: never refresh automatically; the answer reports stale.
+    pub refresh: String,
+
+    /// Maximum number of results returned per call. Bounds the answer so a
+    /// broad query cannot flood the context.
+    pub max_results: usize,
+
+    /// Largest file, in bytes, eligible for content indexing. Larger files are
+    /// indexed by path only, which keeps the index small on generated or
+    /// vendored trees.
+    pub max_file_bytes: usize,
+}
+
+impl Default for SearchIndexConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            index_path: ".kcode/search/index.db".to_string(),
+            refresh: "on_write".to_string(),
+            max_results: 50,
+            max_file_bytes: 1_048_576,
+        }
+    }
+}
+
+impl SearchIndexConfig {
+    /// Refresh modes this build understands. An unrecognized value is ignored
+    /// by the env override rather than trusted, so a typo degrades to the
+    /// config default instead of silently disabling refresh.
+    pub const REFRESH_MODES: [&'static str; 3] = ["on_write", "on_query", "manual"];
+
+    /// True when `mode` is a refresh mode this build implements.
+    pub fn is_known_refresh(mode: &str) -> bool {
+        Self::REFRESH_MODES.iter().any(|known| *known == mode)
+    }
+
+    /// The effective refresh mode, falling back to the default for anything
+    /// unrecognized so a malformed config cannot disable freshness.
+    pub fn effective_refresh(&self) -> &'static str {
+        match self.refresh.as_str() {
+            "on_query" => "on_query",
+            "manual" => "manual",
+            _ => "on_write",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum NamedProviderType {

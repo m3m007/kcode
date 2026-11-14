@@ -46,6 +46,7 @@ pub mod selfdev;
 pub(crate) mod serde_coerce;
 pub(crate) mod session_http;
 mod session_search;
+mod search_index;
 pub(crate) mod session_search_index;
 mod side_panel;
 mod skill;
@@ -485,6 +486,12 @@ impl Registry {
                 &mut timings,
                 "session_search",
                 session_search::SessionSearchTool::new,
+            );
+            Self::insert_tool_timed(
+                &mut m,
+                &mut timings,
+                "search_index",
+                search_index::SearchIndexTool::new,
             );
             Self::insert_tool_timed(&mut m, &mut timings, "memory", memory::MemoryTool::new);
             // Initiative is temporarily unavailable. Keep its implementation and

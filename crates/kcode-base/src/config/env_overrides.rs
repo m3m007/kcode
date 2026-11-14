@@ -552,6 +552,35 @@ impl Config {
                 entries
             };
         }
+        // Built-in metadata file-search index (`search_index` tool).
+        if let Ok(v) = std::env::var("KCODE_SEARCH_ENABLED")
+            && let Some(parsed) = parse_env_bool(&v)
+        {
+            self.search_index.enabled = parsed;
+        }
+        if let Ok(v) = std::env::var("KCODE_SEARCH_INDEX_PATH") {
+            // Empty restores the config default rather than pointing the index
+            // at a nameless path.
+            let trimmed = v.trim();
+            self.search_index.index_path = if trimmed.is_empty() {
+                SearchIndexConfig::default().index_path
+            } else {
+                trimmed.to_string()
+            };
+        }
+        if let Ok(v) = std::env::var("KCODE_SEARCH_REFRESH") {
+            // An unrecognized mode is ignored, not trusted: a typo must degrade
+            // to the config default rather than silently disabling refresh.
+            let trimmed = v.trim();
+            if SearchIndexConfig::is_known_refresh(trimmed) {
+                self.search_index.refresh = trimmed.to_string();
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_SEARCH_MAX_RESULTS") {
+            if let Ok(parsed) = v.trim().parse::<usize>() {
+                self.search_index.max_results = parsed;
+            }
+        }
         if let Ok(v) = std::env::var("KCODE_MEMORY_JEV_PROVIDER") {
             self.agents.memory_jev_provider = v.trim().to_ascii_lowercase();
         }
