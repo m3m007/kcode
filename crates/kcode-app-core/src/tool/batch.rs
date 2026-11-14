@@ -108,7 +108,36 @@ impl ToolCallInput {
 /// - Parameters placed at the same level as "tool" instead of nested under "parameters"
 /// - "name" used instead of "tool" for the tool name key
 /// - "arguments", "args", or "input" used instead of "parameters"
+/// - `tool_calls` sent as a single object or a JSON-encoded string instead of an
+///   array (serde rejects this with `invalid type: ..., expected a sequence`,
+///   which reads as a hard failure to the model and repeats)
 fn normalize_batch_input(mut input: Value) -> Value {
+    // Top-level shape repair first: a non-array `tool_calls` is the one batch
+    // shape serde cannot express, and it is also the shape models emit when
+    // they treat `batch` as a wrapper for a single call. Repair it here so the
+    // per-call normalization below sees a real array.
+    if let Some(existing) = input.get_mut("tool_calls") {
+        let repaired = match existing.take() {
+            Value::Array(calls) => Some(Value::Array(calls)),
+            Value::Object(map) => Some(Value::Array(vec![Value::Object(map)])),
+            Value::String(raw) => {
+                // A JSON-encoded array or object string is still a well-formed
+                // call list; anything else stays a string so the explicit
+                // shape error (with the expected schema) is what the model sees
+                // instead of a raw serde message.
+                match serde_json::from_str::<Value>(raw.trim()) {
+                    Ok(Value::Array(calls)) => Some(Value::Array(calls)),
+                    Ok(Value::Object(map)) => Some(Value::Array(vec![Value::Object(map)])),
+                    _ => Some(Value::String(raw)),
+                }
+            }
+            other => Some(other),
+        };
+        if let Some(value) = repaired {
+            *existing = value;
+        }
+    }
+
     if let Some(calls) = input.get_mut("tool_calls").and_then(|v| v.as_array_mut()) {
         for call in calls.iter_mut() {
             if let Some(obj) = call.as_object_mut() {

@@ -34,6 +34,80 @@ impl Agent {
         pending && batch_available
     }
 
+    /// Evaluate the `[progress]` flush triggers and, if any crossed, push the
+    /// nudge onto the outgoing request while recording the flush.
+    ///
+    /// Pushes nothing when the feature is off, when no threshold has crossed,
+    /// or when the previous loop iteration executed no tool calls (a natural
+    /// end breaks out of the loop before reaching this point, so the flag keeps
+    /// a turn from nudging on its very first request).
+    ///
+    /// The state file is rewritten on every flush so a crash preserves the
+    /// clock. A write failure is logged and swallowed: the nudge is
+    /// best-effort, and a broken `state_file` path must never fail a turn.
+    fn maybe_progress_flush_nudge(
+        &mut self,
+        messages_with_memory: &mut Vec<Message>,
+    ) {
+        let cfg = match self.progress_flush_state.as_ref() {
+            Some(_) => crate::config::config().progress.clone(),
+            // Disabled, or the state file was unavailable at construction.
+            None => return,
+        };
+        if !self.progress_last_iteration_had_tool_calls {
+            // First request of the turn (or the previous round was a pure
+            // text continuation): nothing has accumulated yet.
+            return;
+        }
+
+        let Some(state) = self.progress_flush_state.as_ref() else {
+            return;
+        };
+        let now_ts = progress_flush::now_ts();
+        let reasons = progress_flush::triggers_crossed(
+            &cfg,
+            state,
+            now_ts,
+            self.progress_turn_index,
+            self.progress_tokens_since_flush,
+        );
+        if reasons.is_empty() {
+            return;
+        }
+
+        let nudge = progress_flush::render_nudge(&cfg, &reasons);
+        let reason_label = reasons
+            .iter()
+            .map(|reason| reason.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        logging::info(&format!(
+            "Progress flush nudge injected (trigger: {reason_label}, interval: {}s, turns: {}/{}, tokens: {})",
+            cfg.flush_interval_seconds,
+            self.progress_turn_index,
+            cfg.flush_every_turns,
+            self.progress_tokens_since_flush
+        ));
+        messages_with_memory.push(Message::user(&nudge));
+
+        // Record the flush so the same threshold cannot fire again
+        // immediately, and persist it so a crash keeps the clock.
+        let updated = progress_flush::FlushState {
+            last_flush_ts: Some(now_ts),
+            last_flush_turn: self.progress_turn_index,
+            last_flush_tokens: self.progress_tokens_since_flush,
+        };
+        let path = progress_flush::state_file_path(&cfg, self.session.working_dir.as_deref());
+        if let Err(error) = updated.save(&path) {
+            logging::warn(&format!(
+                "Progress flush state not written to {}: {error}",
+                path.display()
+            ));
+        }
+        self.progress_flush_state = Some(updated);
+        self.progress_tokens_since_flush = 0;
+    }
+
     pub(super) fn plan_limit_reminder(
         notice: &crate::subscription_notice::QuotaExceeded,
     ) -> String {
@@ -69,6 +143,10 @@ impl Agent {
         let mut turn_tool_calls = 0usize;
         let mut todo_nudge_sent = false;
         let mut consecutive_malformed_tool_rounds = 0u32;
+        // The flush clock and counters live on the Agent so they survive across
+        // turns of the same session; reset the per-turn markers here so a new
+        // turn starts from a clean continuation state.
+        self.progress_last_iteration_had_tool_calls = false;
 
         loop {
             // Do not start another provider request once a cancel has been
@@ -84,6 +162,10 @@ impl Agent {
                 ));
                 break;
             }
+            // Count this loop pass for the `flush_every_turns` trigger. The
+            // persisted `last_flush_turn` uses the same scale, so a resumed
+            // session's counter stays comparable.
+            self.progress_turn_index = self.progress_turn_index.saturating_add(1);
             let repaired = self.repair_missing_tool_outputs();
             if repaired > 0 {
                 logging::warn(&format!(
@@ -183,6 +265,12 @@ impl Agent {
                 crate::subscription_notice::show_upgrade_card(&notice, &self.session.id);
                 messages_with_memory.push(Message::user(&Self::plan_limit_reminder(&notice)));
             }
+            // Periodic progress-flush nudge. This is the turn-loop wire point
+            // the research specifies: after the tool results of the previous
+            // round are in history, before the next model call. A natural end
+            // (text-only response) breaks out of this loop before reaching
+            // here, so it is never nudged.
+            self.maybe_progress_flush_nudge(&mut messages_with_memory);
 
             logging::info(&format!(
                 "API call starting: {} messages, {} tools",
@@ -932,6 +1020,13 @@ impl Agent {
                 cache_read_input_tokens: usage_cache_read,
                 cache_creation_input_tokens: usage_cache_creation,
             };
+            // Accumulate for the `flush_token_threshold` trigger. `last_usage`
+            // holds only the latest request, so the running total has to be
+            // kept here; it resets when a flush is recorded.
+            self.progress_tokens_since_flush = self
+                .progress_tokens_since_flush
+                .saturating_add(self.last_usage.input_tokens)
+                .saturating_add(self.last_usage.output_tokens);
 
             let visible_text_is_empty = text_content.trim().is_empty();
 
@@ -1084,6 +1179,9 @@ impl Agent {
             }
 
             turn_tool_calls += tool_calls.len();
+            // This iteration executed tool calls, so the next loop pass is a
+            // continuation rather than a natural end: the flush nudge may fire.
+            self.progress_last_iteration_had_tool_calls = true;
             let used_batch = tool_calls.iter().any(|tc| tc.name == "batch");
             sequential_single_tool_rounds = Self::update_sequential_tool_rounds(
                 sequential_single_tool_rounds,
@@ -1098,7 +1196,30 @@ impl Agent {
             let mut malformed_calls: Vec<MalformedToolCallInfo> = Vec::new();
             let mut executed_valid_call = false;
             let mut tool_results_dirty = false;
-            for tc in tool_calls {
+            // Parallel seam: run the independent read-only calls of this round
+            // concurrently (off by default). Their results are already in the
+            // conversation, in the model's original tool_call order, so the
+            // loop below skips exactly those indices and runs the rest
+            // sequentially, unchanged.
+            let parallel_handled = self
+                .execute_parallelizable_tools(
+                    &tool_calls,
+                    &sdk_tool_results,
+                    &crate::config::config().parallel_tools,
+                    None,
+                )
+                .await?;
+            if !parallel_handled.is_empty() {
+                tool_results_dirty = true;
+                // A parallelized call that passed validation is as genuinely
+                // valid as a sequential one, so it resets the malformed-round
+                // bound below exactly like the sequential path does.
+                executed_valid_call = true;
+            }
+            for (call_index, tc) in tool_calls.iter().enumerate() {
+                if parallel_handled.contains(&call_index) {
+                    continue;
+                }
                 let message_id = assistant_message_id
                     .clone()
                     .unwrap_or_else(|| self.session.id.clone());
@@ -1124,7 +1245,7 @@ impl Agent {
                     self.add_message(
                         Role::User,
                         vec![ContentBlock::ToolResult {
-                            tool_use_id: tc.id,
+                            tool_use_id: tc.id.clone(),
                             content: error_msg,
                             is_error: Some(true),
                         }],
@@ -1186,7 +1307,7 @@ impl Agent {
                         self.add_message(
                             Role::User,
                             vec![ContentBlock::ToolResult {
-                                tool_use_id: tc.id,
+                                tool_use_id: tc.id.clone(),
                                 content: sdk_content,
                                 is_error: if sdk_is_error { Some(true) } else { None },
                             }],
@@ -1279,7 +1400,7 @@ impl Agent {
                             println!("{}", preview.lines().next().unwrap_or("(done)"));
                         }
 
-                        let blocks = tool_output_to_content_blocks(tc.id, output);
+                        let blocks = tool_output_to_content_blocks(tc.id.clone(), output);
                         self.add_message_with_duration(
                             Role::User,
                             blocks,
@@ -1312,7 +1433,7 @@ impl Agent {
                         self.add_message_with_duration(
                             Role::User,
                             vec![ContentBlock::ToolResult {
-                                tool_use_id: tc.id,
+                                tool_use_id: tc.id.clone(),
                                 content: error_msg,
                                 is_error: Some(true),
                             }],

@@ -493,6 +493,95 @@ proactive_floor = 0.40
 proactive_floor_tokens = 150000
 # Set proactive_floor_tokens = 0 to use only the percentage floor.
 
+[progress]
+# Long runs on thinking models can go silent for tens of minutes inside two or
+# three tool rounds, so a crash loses everything that only existed as invisible
+# reasoning. When enabled, the turn loop injects a "write your progress now"
+# nudge after tool results and before the next model call, whenever a threshold
+# below is crossed. The nudge never ends the run; it only asks for a flush.
+enabled = true
+# Primary trigger: seconds since the last flush. Time is primary because the
+# measured failure is time-shaped, not turn- or token-shaped. 0 disables it.
+flush_interval_seconds = 600
+# Secondary trigger: turn-loop iterations since the last flush. 0 disables it.
+flush_every_turns = 5
+# Tertiary trigger: tokens consumed since the last flush. 0 disables it.
+flush_token_threshold = 40000
+# Documents the nudge names, relative to the working directory.
+progress_file = ".kcode/progress.md"
+plan_file = ".kcode/plan.md"
+# Machine-checked flush bookkeeping (last_flush_ts/last_flush_turn/
+# last_flush_tokens). Written by kcode, not by the model.
+state_file = ".kcode/progress/flush-state.json"
+# List the two document paths inside the nudge so the model knows what to write.
+inject_doc_paths = true
+# Hard cap on the rendered nudge, mirroring the hook-context cap.
+nudge_max_chars = 8000
+# Env overrides: KCODE_FLUSH_INTERVAL_SECONDS, KCODE_FLUSH_EVERY_TURNS,
+# KCODE_FLUSH_TOKEN_THRESHOLD, KCODE_PROGRESS_FILE.
+
+[context_prune]
+# Deterministic, byte-stable compression of what enters context, from the
+# in-tree fork of `context-prune` (MIT, fuleinist/context-prune 0.4.0).
+#
+# kcode's context is append-only to protect prompt caching, so anything
+# compressed on the way in must be byte-stable: identical input bytes must
+# produce identical output bytes on every run, or the cache misses and the
+# whole prefix is re-billed. Every transform here is a pure function of the
+# input (JSON compact reserialize, ANSI strip, CR-overwrite collapse,
+# repeated-line dedupe, tree-sitter Rust skeleton) — no model inference, no
+# clocks, no randomness. The output is cached by SHA-256 of the input, so the
+# same payload is never compressed twice.
+#
+# Fail-open by design: any compression error passes the original payload
+# through unchanged and logs a warning. A read or a tool result is never lost.
+#
+# Disabled by default. `enabled = false` is a byte-for-byte no-op: no
+# compression, no cache writes, no logging.
+enabled = false
+# Minimum payload size in bytes eligible for compression. Smaller payloads
+# pass through untouched, so short reads and small tool results are never
+# rewritten. Mirrors upstream CompressConfig::min_size.
+min_bytes = 2048
+# Consecutive identical lines needed before the dedupe collapse fires.
+# Mirrors upstream CompressConfig::dedupe_threshold.
+repeated_threshold = 3
+# Skeletonize Rust sources at the file-read stage: keep every signature, elide
+# function/field/enum bodies. When false, Rust files get the general text
+# compressor instead.
+skeleton = true
+# SQLite content-hash cache holding the RAW payloads, keyed by SHA-256 of the
+# input, so the model can retrieve the full output after it was compressed.
+# Relative to the working directory. Empty disables the cache (compression
+# still runs, but the raw payload is not retained).
+cache_path = ".kcode/prune/cache.db"
+# Env overrides: KCODE_PRUNE_ENABLED, KCODE_PRUNE_MIN_BYTES,
+# KCODE_PRUNE_REPEATED_THRESHOLD, KCODE_PRUNE_SKELETON, KCODE_PRUNE_CACHE_PATH.
+
+[parallel_tools]
+# Harness-side parallel execution of independent read-only tool calls.
+#
+# When one model response carries several tool calls, kcode normally runs them
+# one at a time in the model's order. With this enabled, a leading run of calls
+# that are all on read_only_tools runs concurrently and their results are merged
+# back in the model's original order, so the conversation bytes are identical to
+# the sequential run. Anything not on the allow-list (writes, bash, unknown MCP
+# tools) still runs sequentially, in order, exactly as before.
+#
+# Disabled by default: with enabled = false kcode takes the same sequential code
+# path it always took.
+# Env overrides: KCODE_PARALLEL_TOOLS_ENABLED,
+# KCODE_PARALLEL_TOOLS_MAX_CONCURRENCY, KCODE_PARALLEL_TOOLS_READ_ONLY_TOOLS.
+enabled = false
+# Tool names whose calls are independent and read-only, and therefore safe to
+# run concurrently. Only calls named here may be parallelized; an empty list
+# means nothing is parallelized. kcode ships no built-in list on purpose: only
+# you know whether a tool (especially an MCP tool) actually writes.
+# read_only_tools = ["read", "agentgrep", "glob", "grep", "ls"]
+# Maximum number of allow-listed calls in flight at once. 1 serializes them;
+# larger values overlap them. 8-core hosts measure well at 4.
+max_concurrency = 1
+
 [acp]
 # Agent Client Protocol adapter compatibility profile: standard, extended, or full.
 # standard emits only spec-compatible ACP messages.
@@ -649,6 +738,14 @@ swarm_max_concurrent_agents = 32
 # Env overrides: KCODE_SWARM_STALL_AFTER_SECS, KCODE_SWARM_STALL_NUDGE
 swarm_stall_after_secs = 600
 # swarm_stall_nudge = false
+#
+# Consecutive tool rounds in which every call failed schema validation before
+# the turn is ended with the `Invalid tool calls:` error. Rounds below the cap
+# are corrected in-band (validation error + expected schema injected, provider
+# session reset once per streak), so a higher value survives transient model
+# mistakes without killing a long run. 0 or 1 falls back to the default of 5.
+# Env override: KCODE_MALFORMED_TOOL_CALL_ROUNDS
+# malformed_tool_call_rounds = 5
 #
 # Max percentage (1-90) of the chat height the inline swarm gallery band may use.
 # Unset = built-in default (40%). Lower values keep more transcript visible; set
@@ -1002,6 +1099,27 @@ mod tests {
         assert_eq!(config.tools.mcp_tools_token_threshold, 8_000);
         assert_eq!(config.tools.auto_background_timeout_ms, 3_000);
         assert_eq!(config.session.hibernation_idle_secs, 1800);
+        assert!(config.progress.enabled);
+        assert_eq!(config.progress.flush_interval_seconds, 600);
+        assert_eq!(config.progress.flush_every_turns, 5);
+        assert_eq!(config.progress.flush_token_threshold, 40_000);
+        assert_eq!(config.progress.progress_file, ".kcode/progress.md");
+        assert_eq!(config.progress.plan_file, ".kcode/plan.md");
+        assert_eq!(
+            config.progress.state_file,
+            ".kcode/progress/flush-state.json"
+        );
+        assert!(config.progress.inject_doc_paths);
+        assert_eq!(config.progress.nudge_max_chars, 8_000);
+        assert!(
+            !config.parallel_tools.enabled,
+            "the shipped user config must leave parallel read-only tool execution opt-in"
+        );
+        assert_eq!(config.parallel_tools.max_concurrency, 1);
+        assert!(
+            config.parallel_tools.read_only_tools.is_empty(),
+            "the shipped user config must not name any tool as parallel-safe"
+        );
         assert!(
             config.display.show_thinking,
             "the shipped user config must request model reasoning"

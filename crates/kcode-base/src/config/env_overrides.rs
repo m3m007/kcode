@@ -1,12 +1,16 @@
 use super::*;
 
 impl Config {
-    /// Apply environment variable overrides
+    /// Apply environment variable overrides.
+    ///
+    /// Public so crates outside `kcode-base` (notably `kcode-app-core`, and its
+    /// integration tests) can reproduce exactly what the config loader does
+    /// instead of re-implementing env parsing.
     #[expect(
         clippy::collapsible_if,
         reason = "Environment override parsing is intentionally explicit and grouped by config area"
     )]
-    pub(crate) fn apply_env_overrides(&mut self) {
+    pub fn apply_env_overrides(&mut self) {
         if let Ok(value) = std::env::var("KCODE_BROWSER_HANDOFF") {
             self.tools.browser_handoff = value == "1" || value.eq_ignore_ascii_case("true");
         }
@@ -454,6 +458,99 @@ impl Config {
                 "0" | "false" | "no" | "off" => self.agents.swarm_stall_nudge = false,
                 _ => {}
             }
+        }
+        if let Ok(v) = std::env::var("KCODE_MALFORMED_TOOL_CALL_ROUNDS") {
+            if let Ok(parsed) = v.trim().parse::<u32>() {
+                self.agents.malformed_tool_call_rounds = parsed;
+            }
+        }
+        // Periodic progress-flush nudges for long-running turns.
+        if let Ok(v) = std::env::var("KCODE_FLUSH_ENABLED")
+            && let Some(parsed) = parse_env_bool(&v)
+        {
+            self.progress.enabled = parsed;
+        }
+        if let Ok(v) = std::env::var("KCODE_FLUSH_INTERVAL_SECONDS") {
+            if let Ok(parsed) = v.trim().parse::<u64>() {
+                self.progress.flush_interval_seconds = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_FLUSH_EVERY_TURNS") {
+            if let Ok(parsed) = v.trim().parse::<u32>() {
+                self.progress.flush_every_turns = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_FLUSH_TOKEN_THRESHOLD") {
+            if let Ok(parsed) = v.trim().parse::<u64>() {
+                self.progress.flush_token_threshold = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_PROGRESS_FILE") {
+            // An explicitly empty value restores the config-file default rather
+            // than pointing the nudge at a nameless path.
+            let trimmed = v.trim();
+            self.progress.progress_file = if trimmed.is_empty() {
+                ProgressConfig::default().progress_file
+            } else {
+                trimmed.to_string()
+            };
+        }
+        // Deterministic context compression (fork of context-prune).
+        if let Ok(v) = std::env::var("KCODE_PRUNE_ENABLED")
+            && let Some(parsed) = parse_env_bool(&v)
+        {
+            self.context_prune.enabled = parsed;
+        }
+        if let Ok(v) = std::env::var("KCODE_PRUNE_MIN_BYTES") {
+            if let Ok(parsed) = v.trim().parse::<usize>() {
+                self.context_prune.min_bytes = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_PRUNE_REPEATED_THRESHOLD") {
+            if let Ok(parsed) = v.trim().parse::<usize>() {
+                self.context_prune.repeated_threshold = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_PRUNE_SKELETON")
+            && let Some(parsed) = parse_env_bool(&v)
+        {
+            self.context_prune.skeleton = parsed;
+        }
+        if let Ok(v) = std::env::var("KCODE_PRUNE_CACHE_PATH") {
+            // Empty restores the config-file default rather than pointing the
+            // raw-payload cache at a nameless path.
+            let trimmed = v.trim();
+            self.context_prune.cache_path = if trimmed.is_empty() {
+                ContextPruneConfig::default().cache_path
+            } else {
+                trimmed.to_string()
+            };
+        }
+        // Harness-side parallel execution of independent read-only tool calls.
+        if let Ok(v) = std::env::var("KCODE_PARALLEL_TOOLS_ENABLED")
+            && let Some(parsed) = parse_env_bool(&v)
+        {
+            self.parallel_tools.enabled = parsed;
+        }
+        if let Ok(v) = std::env::var("KCODE_PARALLEL_TOOLS_MAX_CONCURRENCY") {
+            if let Ok(parsed) = v.trim().parse::<usize>() {
+                self.parallel_tools.max_concurrency = parsed;
+            }
+        }
+        if let Ok(v) = std::env::var("KCODE_PARALLEL_TOOLS_READ_ONLY_TOOLS") {
+            // An explicitly empty value restores the default (nothing
+            // parallelized) rather than leaving a stale allow-list in place.
+            let entries = v
+                .split([',', ' ', '\n', '\t', '\r'])
+                .map(str::trim)
+                .filter(|entry| !entry.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            self.parallel_tools.read_only_tools = if entries.is_empty() {
+                ParallelToolsConfig::default().read_only_tools
+            } else {
+                entries
+            };
         }
         if let Ok(v) = std::env::var("KCODE_MEMORY_JEV_PROVIDER") {
             self.agents.memory_jev_provider = v.trim().to_ascii_lowercase();

@@ -263,12 +263,46 @@ impl Tool for ReadTool {
             ));
         }
 
-        if output.is_empty() {
+        // File-read stage of context pruning: deterministic, byte-stable
+        // compression before this text enters context. Rust sources go through
+        // the tree-sitter skeleton (signatures kept, bodies elided), everything
+        // else through the general text compressor. Gated on `[context_prune]
+        // enabled` (default off) and fail-open: any error returns the original
+        // text unchanged, so a read is never lost. The raw payload is retained
+        // in the content-hash cache so the model can retrieve the full output.
+        let pruned = prune_file_read_for_context(&output, &params.file_path);
+
+        if pruned.is_empty() {
             Ok(ToolOutput::new("(empty file)"))
         } else {
-            Ok(ToolOutput::new(output))
+            Ok(ToolOutput::new(pruned))
         }
     }
+}
+
+/// File-read stage of context pruning.
+///
+/// Reads the `[context_prune]` config (default **off**) and compresses the
+/// rendered file text before it enters context. With the feature disabled this
+/// returns the input byte-identical, so a stock kcode is unaffected.
+fn prune_file_read_for_context(rendered: &str, file_path: &str) -> String {
+    let settings = crate::context_prune::PruneSettings::from(
+        &crate::config::config().context_prune,
+    );
+    if !settings.enabled {
+        return rendered.to_string();
+    }
+    let (compressed, outcome) = crate::context_prune::prune_file_read(rendered, file_path, &settings);
+    if outcome.ratio() > 0.0 {
+        crate::logging::info(&format!(
+            "[context_prune] file read compressed {} -> {} bytes ({:.1}% saved, transforms: {})",
+            outcome.input_bytes,
+            outcome.output_bytes,
+            outcome.ratio() * 100.0,
+            outcome.transforms_applied.join(",")
+        ));
+    }
+    compressed
 }
 
 #[cfg(test)]

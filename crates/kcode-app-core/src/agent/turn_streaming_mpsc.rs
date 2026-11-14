@@ -1454,7 +1454,29 @@ impl Agent {
             let mut malformed_calls: Vec<MalformedToolCallInfo> = Vec::new();
             let mut executed_valid_call = false;
             let mut tool_results_dirty = false;
+            // Parallel seam: run the independent read-only calls of this round
+            // concurrently (off by default). Their results are already in the
+            // conversation, in the model's original tool_call order, so the
+            // loop below skips exactly those indices and runs the rest
+            // sequentially, unchanged.
+            let parallel_handled = self
+                .execute_parallelizable_tools(
+                    &tool_calls,
+                    &sdk_tool_results,
+                    &crate::config::config().parallel_tools,
+                    Some(&event_tx),
+                )
+                .await?;
+            if !parallel_handled.is_empty() {
+                tool_results_dirty = true;
+            }
             for tool_index in 0..tool_count {
+                // Calls the parallel seam already executed and recorded. Their
+                // tool_result is in the conversation, so re-running them would
+                // duplicate it and violate the API's one-result-per-call rule.
+                if parallel_handled.contains(&tool_index) {
+                    continue;
+                }
                 // === INJECTION POINT C (before): Check for urgent abort before each tool (except first) ===
                 if tool_index > 0 && self.has_urgent_interrupt() {
                     crate::telemetry::record_user_cancelled();

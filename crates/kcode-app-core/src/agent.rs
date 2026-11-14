@@ -11,7 +11,11 @@ mod interrupts;
 mod messages;
 #[cfg(test)]
 mod model_usage_tests;
+mod parallel_tools;
+#[cfg(test)]
+mod parallel_tools_tests;
 mod prompting;
+mod progress_flush;
 mod provider;
 mod response_recovery;
 mod runtime_recovery;
@@ -374,6 +378,22 @@ pub struct Agent {
     /// One logical runtime session, independent of the process-global legacy
     /// telemetry slot and of any TUI clients viewing this agent.
     concurrency_session: Option<crate::telemetry::ConcurrencySession>,
+    /// Periodic progress-flush bookkeeping for this session, loaded from the
+    /// configured `state_file` when `[progress] enabled`. `None` means the
+    /// feature is off or its state file could not be resolved, in which case
+    /// the turn loop skips flush tracking entirely.
+    progress_flush_state: Option<progress_flush::FlushState>,
+    /// Turn-loop iteration counter for the `flush_every_turns` trigger.
+    /// Counts every loop pass of the current turn, matching the semantics of
+    /// `FlushState::last_flush_turn`.
+    progress_turn_index: u32,
+    /// Tokens consumed since the last flush, for the `flush_token_threshold`
+    /// trigger. Accumulated across loop iterations and reset on each flush.
+    progress_tokens_since_flush: u64,
+    /// Whether the previous loop iteration executed tool calls. The flush
+    /// nudge only fires on a continuation (tool results were just appended and
+    /// another request is about to be made), never on a natural end.
+    progress_last_iteration_had_tool_calls: bool,
 }
 
 impl Agent {
@@ -436,6 +456,22 @@ impl Agent {
         }
     }
 
+    /// Load the persisted flush bookkeeping for a session, or `None` when the
+    /// `[progress]` feature is disabled.
+    ///
+    /// Reading the file here (once per Agent) rather than on every loop
+    /// iteration keeps the hot path free of filesystem work, and means a
+    /// corrupt or missing file costs one default-state allocation at startup
+    /// instead of an error mid-turn.
+    fn agent_progress_flush_state(session: &Session) -> Option<progress_flush::FlushState> {
+        let cfg = crate::config::config().progress.clone();
+        if !cfg.enabled {
+            return None;
+        }
+        let path = progress_flush::state_file_path(&cfg, session.working_dir.as_deref());
+        Some(progress_flush::FlushState::load(&path))
+    }
+
     fn build_base(
         provider: Arc<dyn Provider>,
         registry: Registry,
@@ -458,6 +494,8 @@ impl Agent {
             allowed_tools.clone(),
             disabled_tools.clone(),
         );
+        // Read the flush bookkeeping before the struct literal moves `session`.
+        let progress_flush_state = Self::agent_progress_flush_state(&session);
         let mut agent = Self {
             turn_ownership: Default::default(),
             provider,
@@ -502,6 +540,10 @@ impl Agent {
             transcript_telemetry_sent: false,
             telemetry_session_deferred: false,
             concurrency_session: None,
+            progress_flush_state,
+            progress_turn_index: 0,
+            progress_tokens_since_flush: 0,
+            progress_last_iteration_had_tool_calls: false,
         };
         let t = Instant::now();
         agent.refresh_prompt_skills_snapshot();

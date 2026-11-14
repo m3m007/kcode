@@ -103,6 +103,10 @@ members = [
     "crates/kcode-render-core",
     "vendor/ratatui-kcode/ratatui-core",
     "vendor/ratatui-kcode/ratatui-widgets",
+    # In-tree fork of fuleinist/context-prune 0.4.0 (MIT) exposing its
+    # compress/skeleton/graph/cache modules as a library. See
+    # vendor/context-prune/README.md for the fork record.
+    "vendor/context-prune",
 ]
 
 [lib]

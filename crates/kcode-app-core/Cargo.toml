@@ -105,6 +105,15 @@ flate2 = "1"
 tar = "0.4"
 tempfile = "3"
 agentgrep = { git = "https://github.com/1jehuang/agentgrep.git", tag = "v0.2.0" }
+# Deterministic, byte-stable context compression (fork of
+# fuleinist/context-prune 0.4.0, MIT). Consumed at the file-read stage
+# (tool/read.rs) and the tool-output stage (agent/tools.rs); both are
+# config-gated by [context_prune] and fail open. Default features (the
+# `skeleton` feature, i.e. the tree-sitter stack) stay on because
+# `[context_prune] skeleton` is a runtime config knob: a cargo feature cannot be
+# toggled per session, so the dependency must compile the skeleton support and
+# the config decides whether it is called. See vendor/context-prune/README.md.
+context-prune = { path = "../../vendor/context-prune" }
 
 [features]
 default = ["pdf", "bedrock"]

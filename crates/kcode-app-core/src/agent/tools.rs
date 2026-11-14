@@ -4,6 +4,36 @@ use crate::tool::ToolOutput;
 
 pub(super) const MAX_TOOL_OUTPUT_CHARS_FOR_HISTORY: usize = 512 * 1024;
 
+/// Tool-output stage of context pruning.
+///
+/// Every tool result passes through here on its way into context (this is the
+/// single funnel: the sequential turn loop, the streaming turn loop, and
+/// `add_manual_tool_result` all call `tool_output_to_content_blocks`). The
+/// compression is config-driven (`[context_prune]`, default **off**), so a
+/// stock kcode returns the payload byte-identical, and fail-open, so any error
+/// returns the original text unchanged.
+///
+/// The raw payload is retained in the content-hash cache (`[context_prune]
+/// cache_path`) keyed by SHA-256, so the compressed form is never a dead end
+/// and the model can still retrieve the full output.
+pub(super) fn prune_tool_output_for_context(output: &str) -> String {
+    let settings = crate::context_prune::PruneSettings::from(&crate::config::config().context_prune);
+    if !settings.enabled {
+        return output.to_string();
+    }
+    let (compressed, outcome) = crate::context_prune::prune_tool_output(output, &settings);
+    if outcome.ratio() > 0.0 {
+        crate::logging::info(&format!(
+            "[context_prune] tool output compressed {} -> {} bytes ({:.1}% saved, transforms: {})",
+            outcome.input_bytes,
+            outcome.output_bytes,
+            outcome.ratio() * 100.0,
+            outcome.transforms_applied.join(",")
+        ));
+    }
+    compressed
+}
+
 pub(super) fn cap_tool_output_for_history(tool_name: &str, mut output: ToolOutput) -> ToolOutput {
     if output.output.chars().count() <= MAX_TOOL_OUTPUT_CHARS_FOR_HISTORY {
         return output;
@@ -103,7 +133,7 @@ pub(super) fn tool_output_to_content_blocks(
     let references = tool_output_references(&output);
     let mut blocks = vec![ContentBlock::ToolResult {
         tool_use_id: tool_use_id.clone(),
-        content: output.output,
+        content: prune_tool_output_for_context(&output.output),
         is_error: None,
     }];
     for img in output.images {

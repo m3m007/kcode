@@ -364,7 +364,23 @@ impl Agent {
     /// again). Rounds below the cap get a schema-guided correction; the round
     /// at the cap ends the turn with an actionable error instead of spending
     /// forever on the same malformed output.
-    pub(crate) const MAX_MALFORMED_TOOL_CALL_ROUNDS: u32 = 3;
+    ///
+    /// This was a hardcoded 3, which killed long `jcode run` audits on the
+    /// third malformed round even though the in-band correction is designed to
+    /// let the model recover. The effective value now comes from
+    /// `agents.malformed_tool_call_rounds` (default 5, env override
+    /// `KCODE_MALFORMED_TOOL_CALL_ROUNDS`) via [`Self::malformed_tool_call_rounds`].
+    /// A configured `0` (or anything below the correction minimum of 2) falls
+    /// back to the default, so the schema correction always fires at least once
+    /// before the turn is ended.
+    pub(crate) const DEFAULT_MAX_MALFORMED_TOOL_CALL_ROUNDS: u32 = 5;
+
+    /// Effective cap: the configured value, clamped so at least one
+    /// schema-guided correction is injected before the terminal error.
+    pub(crate) fn malformed_tool_call_rounds(&self) -> u32 {
+        Self::DEFAULT_MAX_MALFORMED_TOOL_CALL_ROUNDS
+            .max(crate::config::config().agents.malformed_tool_call_rounds)
+    }
 
     /// Stable prefix for the terminal malformed-tool-call failure, so clients
     /// can recognise it. Public so they can reference
@@ -389,7 +405,7 @@ impl Agent {
     ///   state is reset once per streak, so the next request resends full
     ///   context instead of continuing a possibly corrupted server-side
     ///   session.
-    /// - At [`Agent::MAX_MALFORMED_TOOL_CALL_ROUNDS`] consecutive rounds the
+    /// - At the configured malformed-tool-call cap consecutive rounds the
     ///   turn fails with a terminal error starting with
     ///   [`Agent::MALFORMED_TOOL_CALL_ERROR_PREFIX`] and actionable guidance.
     pub(crate) fn handle_malformed_tool_round(
@@ -416,11 +432,12 @@ impl Agent {
             .map(|call| call.error.as_str())
             .unwrap_or("malformed tool call");
 
-        if *consecutive_rounds >= Self::MAX_MALFORMED_TOOL_CALL_ROUNDS {
+        let malformed_cap = self.malformed_tool_call_rounds();
+        if *consecutive_rounds >= malformed_cap {
             logging::warn(&format!(
                 "Malformed tool-call round {}/{} ({} invalid call(s), last: {}); ending turn",
                 consecutive_rounds,
-                Self::MAX_MALFORMED_TOOL_CALL_ROUNDS,
+                malformed_cap,
                 invalid.len(),
                 last_error
             ));
@@ -447,7 +464,7 @@ impl Agent {
             "Tool round had {} malformed call(s) (validation-only round {}/{}); injecting schema-guided correction",
             invalid.len(),
             consecutive_rounds,
-            Self::MAX_MALFORMED_TOOL_CALL_ROUNDS
+            malformed_cap
         ));
         self.add_message(
             Role::User,
@@ -1008,15 +1025,24 @@ mod malformed_tool_call_recovery_tests {
     async fn consecutive_malformed_rounds_terminate_the_turn_with_stable_prefix() {
         let _sandbox = crate::auth::test_sandbox::AuthTestSandbox::new().unwrap();
         for streaming in [false, true] {
-            let (mut agent, session_ids, exec_log) = scripted_agent(vec![
-                malformed_round("m1", Some("sess-1")),
-                malformed_round("m2", Some("sess-1")),
-                malformed_round("m3", Some("sess-1")),
-                // A fourth round exists in the script; requesting it would
-                // prove the loop is unbounded.
-                malformed_round("m4", None),
-            ])
-            .await;
+            // Read the effective cap from config (same formula the agent uses),
+            // before the agent exists so we can script exactly that many rounds.
+            let cap = Agent::DEFAULT_MAX_MALFORMED_TOOL_CALL_ROUNDS
+                .max(crate::config::config().agents.malformed_tool_call_rounds)
+                as usize;
+            // Script exactly `cap` malformed rounds so the loop reaches the
+            // configured cap and terminates (the cap is config-backed, so this
+            // stays correct if the default changes).
+            let mut rounds: Vec<Vec<StreamEvent>> = Vec::new();
+            for i in 0..cap {
+                let session = if i == 0 || i == 1 {
+                    Some("sess-1".to_string())
+                } else {
+                    None
+                };
+                rounds.push(malformed_round(&format!("m{i}"), session.as_deref()));
+            }
+            let (mut agent, session_ids, exec_log) = scripted_agent(rounds).await;
 
             let error = run_scripted_turn(&mut agent, streaming)
                 .await
@@ -1027,25 +1053,31 @@ mod malformed_tool_call_recovery_tests {
                 "stable prefix missing (streaming={streaming}): {message}"
             );
             assert!(message.contains("glm-test"), "got: {message}");
-            assert!(message.contains("3 consecutive rounds"), "got: {message}");
+            assert!(
+                message.contains(&format!("{cap} consecutive rounds")),
+                "got: {message}"
+            );
             assert!(
                 message.contains("arguments must be a JSON object, got null."),
                 "got: {message}"
             );
             assert!(message.contains("/model"), "got: {message}");
 
-            // Bounded spend: exactly one request per malformed round, and the
-            // fourth scripted round is never requested.
+            // Bounded spend: exactly one request per malformed round, and no
+            // round beyond the cap is requested.
             assert_eq!(
                 session_ids.lock().unwrap().len(),
-                Agent::MAX_MALFORMED_TOOL_CALL_ROUNDS as usize,
+                agent.malformed_tool_call_rounds() as usize,
                 "streaming={streaming}"
             );
-            // The provider session id carried by round 3 is None: it was
-            // reset once after the second validation-only round failed.
+            // The provider session id is None on the first round, carried on
+            // the second, and reset to None after the second validation-only
+            // round failed (reset happens once per streak at round 2).
+            let mut expected_sessions = vec![None, Some("sess-1".into())];
+            expected_sessions.resize(cap, None);
             assert_eq!(
                 *session_ids.lock().unwrap(),
-                vec![None, Some("sess-1".into()), None],
+                expected_sessions,
                 "streaming={streaming}"
             );
 
@@ -1053,12 +1085,20 @@ mod malformed_tool_call_recovery_tests {
             assert!(exec_log.lock().unwrap().is_empty(), "streaming={streaming}");
             // The invalid tool_use blocks and their error tool results stay
             // in history so the transcript and any resume stay consistent.
-            assert_eq!(null_tool_use_count(&agent), 3, "streaming={streaming}");
-            assert_eq!(error_tool_result_count(&agent), 3, "streaming={streaming}");
-            // Two schema-guided correction attempts were injected before the
-            // terminal round.
+            assert_eq!(
+                null_tool_use_count(&agent),
+                cap,
+                "streaming={streaming}"
+            );
+            assert_eq!(
+                error_tool_result_count(&agent),
+                cap,
+                "streaming={streaming}"
+            );
+            // A schema-guided correction attempt is injected before each round
+            // after the first, i.e. cap-1 reminders before the terminal round.
             let reminders = correction_reminders(&agent);
-            assert_eq!(reminders.len(), 2, "streaming={streaming}");
+            assert_eq!(reminders.len(), cap - 1, "streaming={streaming}");
             assert!(reminders[0].contains("capture"), "streaming={streaming}");
             assert!(
                 reminders[0].contains("required: value"),

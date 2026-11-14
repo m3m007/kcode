@@ -365,6 +365,213 @@ impl Default for CompactionConfig {
     }
 }
 
+/// Progress-flush configuration
+///
+/// Long-running turns on thinking models can spend tens of minutes inside two
+/// or three tool rounds with no visible output, so a crash (SIGTERM, quota
+/// error, restart) loses everything the model established: reasoning lives in
+/// the context, and the context dies with the process. This feature injects a
+/// periodic "write your progress to a file now" nudge into the turn loop,
+/// between the tool results of one round and the next model call, so durable
+/// state exists on disk long before the run ends.
+///
+/// The trigger is **time-primary** (the measured failure is time-shaped, not
+/// turn- or token-shaped), with turn count and token growth as secondary and
+/// tertiary triggers. A zero value disables the corresponding trigger.
+///
+/// Env overrides: `KCODE_FLUSH_INTERVAL_SECONDS`, `KCODE_FLUSH_EVERY_TURNS`,
+/// `KCODE_FLUSH_TOKEN_THRESHOLD`, `KCODE_PROGRESS_FILE`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ProgressConfig {
+    /// Master switch. `false` disables flush tracking and injection entirely.
+    pub enabled: bool,
+
+    /// Primary trigger: seconds since the last flush before the nudge fires.
+    /// Zero disables the time trigger.
+    pub flush_interval_seconds: u64,
+
+    /// Secondary trigger: turn-loop iterations since the last flush.
+    /// Zero disables the turn trigger.
+    pub flush_every_turns: u32,
+
+    /// Tertiary trigger: tokens consumed since the last flush.
+    /// Zero disables the token trigger.
+    pub flush_token_threshold: u64,
+
+    /// Path the nudge asks the model to write, relative to the working
+    /// directory. Also the file the nudge names first.
+    pub progress_file: String,
+
+    /// Companion planning document named by the nudge.
+    pub plan_file: String,
+
+    /// Machine-checked flush bookkeeping (`last_flush_ts`, `last_flush_turn`,
+    /// `last_flush_tokens`). JSON rather than Markdown because the model is
+    /// less likely to rewrite structured state it did not author.
+    pub state_file: String,
+
+    /// When true the nudge lists the progress and plan paths so the model knows
+    /// exactly which files to update.
+    pub inject_doc_paths: bool,
+
+    /// Hard cap on the rendered nudge, mirroring the hook-context cap. The
+    /// nudge is short by design; this only bounds a misconfigured template.
+    pub nudge_max_chars: usize,
+}
+
+impl Default for ProgressConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            flush_interval_seconds: 600,
+            flush_every_turns: 5,
+            flush_token_threshold: 40_000,
+            progress_file: ".kcode/progress.md".to_string(),
+            plan_file: ".kcode/plan.md".to_string(),
+            state_file: ".kcode/progress/flush-state.json".to_string(),
+            inject_doc_paths: true,
+            nudge_max_chars: 8_000,
+        }
+    }
+}
+
+/// Context-prune compression configuration.
+///
+/// kcode protects prompt caching with an append-only context: a message that is
+/// already in the cache must be byte-identical the next time it is sent, or the
+/// cache misses and the whole prefix is re-billed. So any compression that runs
+/// on the way into context has to be **deterministic** — identical input bytes
+/// must produce identical output bytes on every run, with no clocks, no model
+/// inference, and no hash-map iteration order leaking into the result. That is
+/// what the forked `context-prune` library provides (JSON compact reserialize,
+/// ANSI strip, CR-overwrite collapse, repeated-line dedupe, tree-sitter Rust
+/// skeleton, content-hash cache), and this section decides where it runs.
+///
+/// Two stages, both opt-in:
+/// - **file-read**: the `read` tool's output is compressed before it enters
+///   context — Rust sources go through the tree-sitter skeleton (signatures
+///   kept, bodies elided) when `skeleton` is on, other text through the general
+///   text compressor.
+/// - **tool-output**: every tool result (bash/read/etc.) goes through the
+///   general text compressor before it enters context.
+///
+/// The raw payload is never destroyed: it is stored in the content-hash cache
+/// keyed by SHA-256 of the input, so the model can retrieve the full output.
+///
+/// **Fail-open**: any compression error passes the original payload through
+/// unchanged (and logs a warning). A broken or unwritable cache degrades to
+/// plain recomputation, never to a lost read.
+///
+/// Defaults to `enabled = false` — zero behavior change until opted in.
+///
+/// Env overrides: `KCODE_PRUNE_ENABLED`, `KCODE_PRUNE_MIN_BYTES`,
+/// `KCODE_PRUNE_REPEATED_THRESHOLD`, `KCODE_PRUNE_SKELETON`,
+/// `KCODE_PRUNE_CACHE_PATH`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ContextPruneConfig {
+    /// Master switch. `false` (the default) leaves every read and tool result
+    /// byte-identical to today: no compression, no cache writes, no logging.
+    pub enabled: bool,
+
+    /// Minimum payload size in bytes eligible for compression. Payloads smaller
+    /// than this pass through untouched, so short reads and small tool results
+    /// are never rewritten. Mirrors upstream `CompressConfig::min_size`.
+    pub min_bytes: usize,
+
+    /// Consecutive identical lines needed before the dedupe collapse fires.
+    /// Mirrors upstream `CompressConfig::dedupe_threshold`.
+    pub repeated_threshold: usize,
+
+    /// Skeletonize Rust sources at the file-read stage (keep signatures, drop
+    /// bodies). When false, Rust files go through the general text compressor.
+    pub skeleton: bool,
+
+    /// Path of the SQLite content-hash cache holding raw payloads, relative to
+    /// the working directory (or absolute). Empty disables the cache, which
+    /// means the raw payload is not retained and compression still runs.
+    pub cache_path: String,
+}
+
+impl Default for ContextPruneConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            // Upstream's own default: only compress payloads that are large
+            // enough for the transforms to pay for themselves.
+            min_bytes: 2048,
+            repeated_threshold: 3,
+            skeleton: true,
+            cache_path: ".kcode/prune/cache.db".to_string(),
+        }
+    }
+}
+
+/// Harness-side parallel execution of independent read-only tool calls.
+///
+/// When one model response carries several tool calls, the harness executes the
+/// leading run of independent, read-only calls concurrently and merges their
+/// results back in the model's original tool-call order. This changes *when*
+/// calls run, never *what* enters the conversation, so the provider prompt cache
+/// and the transcript bytes are unaffected.
+///
+/// The independence proof is deliberately conservative: a static allow-list of
+/// tool names that are read-only, exactly the rule Anthropic documents for
+/// parallel tool use ("independent, read-only operations are usually safe to run
+/// in parallel"), and the same rule Qwen Code and MyCodeAgent ship. Anything
+/// that writes, or that is not on the allow-list, stays sequential, so ordering
+/// hazards cannot be introduced by this feature.
+///
+/// Defaults are **disabled**: with `enabled = false` the harness takes the exact
+/// sequential code path it always took.
+///
+/// Env overrides: `KCODE_PARALLEL_TOOLS_ENABLED`,
+/// `KCODE_PARALLEL_TOOLS_MAX_CONCURRENCY`,
+/// `KCODE_PARALLEL_TOOLS_READ_ONLY_TOOLS` (comma- or whitespace-separated).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ParallelToolsConfig {
+    /// Master switch. `false` (the default) leaves tool execution exactly as it
+    /// was: one call at a time, in the model's order.
+    pub enabled: bool,
+
+    /// Tool names whose calls are independent and read-only, and therefore safe
+    /// to run concurrently. Only calls whose name appears here may be
+    /// parallelized; an empty list means nothing is parallelized.
+    ///
+    /// No built-in list is compiled in: the operator states which of *their*
+    /// tools are read-only, because only they know what an MCP tool named
+    /// `deploy_preview` actually does.
+    pub read_only_tools: Vec<String>,
+
+    /// Maximum number of allow-listed calls in flight at once. `1` serializes
+    /// them (still through the parallel code path), `0` is treated as `1`
+    /// rather than as "unlimited", so a config that cannot be parsed into a
+    /// positive number never becomes an unbounded fan-out, and values above
+    /// the run's length are clamped to it.
+    pub max_concurrency: usize,
+}
+
+impl Default for ParallelToolsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            read_only_tools: Vec::new(),
+            max_concurrency: 1,
+        }
+    }
+}
+
+impl ParallelToolsConfig {
+    /// True when `name` is on the read-only allow-list. Matching is exact,
+    /// matching how every other kcode tool allow-list compares names.
+    pub fn allows_parallel(&self, name: &str) -> bool {
+        self.enabled
+            && self.read_only_tools.iter().any(|entry| entry == name)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum NamedProviderType {
@@ -600,10 +807,29 @@ pub struct AgentsConfig {
     /// Env override: `KCODE_SWARM_STALL_NUDGE`.
     #[serde(default)]
     pub swarm_stall_nudge: bool,
+    /// Consecutive tool rounds in which *every* call failed schema validation
+    /// (e.g. a model emitting `null` or non-object arguments) before the turn
+    /// is ended with the actionable `Invalid tool calls:` error.
+    ///
+    /// Lower values fail fast on a model stuck in a malformed-call loop; higher
+    /// values survive transient model mistakes without killing a long run.
+    /// Rounds below the cap are corrected in-band: the validation error plus the
+    /// failing tool's expected input schema are injected as a system reminder,
+    /// nothing is executed, and the provider session is reset once per streak.
+    ///
+    /// `0` is treated as the built-in default (a cap of 0 would end the turn on
+    /// the first malformed round, before any correction could be injected).
+    /// Env override: `KCODE_MALFORMED_TOOL_CALL_ROUNDS`.
+    #[serde(default = "default_malformed_tool_call_rounds")]
+    pub malformed_tool_call_rounds: u32,
 }
 
 fn default_swarm_stall_after_secs() -> u64 {
     600
+}
+
+fn default_malformed_tool_call_rounds() -> u32 {
+    5
 }
 
 fn default_swarm_max_concurrent_agents() -> usize {
@@ -666,6 +892,7 @@ impl Default for AgentsConfig {
             swarm_max_concurrent_agents: default_swarm_max_concurrent_agents(),
             swarm_stall_after_secs: default_swarm_stall_after_secs(),
             swarm_stall_nudge: false,
+            malformed_tool_call_rounds: default_malformed_tool_call_rounds(),
         }
     }
 }

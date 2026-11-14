@@ -10,10 +10,11 @@ pub use kcode_config_types::{
     GatewayConfig, HookCommands, HooksConfig, KeybindingsConfig, LatexRenderingMode,
     LaunchHotkeyEntry, LaunchHotkeysConfig, MarkdownSpacingMode, MenubarConfig, NamedProviderAuth,
     NamedProviderConfig, NamedProviderModelConfig, NamedProviderType, NativeScrollbarConfig,
-    NotificationsConfig, PowerConfig, ProviderConfig, ReasoningDisplayMode, ResumeOpenElsewhere,
-    ResumeTimeMode, SafetyConfig, SessionConfig, SessionPickerResumeAction, SponsorsConfig,
-    SwarmSpawnMode, SwarmStripLayout, TerminalConfig, UpdateChannel, WebSearchConfig,
-    WebSearchEngine,
+    NotificationsConfig, PowerConfig, ProgressConfig, ContextPruneConfig, ParallelToolsConfig,
+    ProviderConfig,
+    ReasoningDisplayMode, ResumeOpenElsewhere, ResumeTimeMode, SafetyConfig, SessionConfig,
+    SessionPickerResumeAction, SponsorsConfig, SwarmSpawnMode, SwarmStripLayout, TerminalConfig,
+    UpdateChannel, WebSearchConfig, WebSearchEngine,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -134,6 +135,19 @@ const CONFIG_ENV_KEYS: &[&str] = &[
     "KCODE_ACP_TOOL_PROFILE",
     "KCODE_ACTIVE_SESSIONS_MANAGER",
     "KCODE_EXTERNAL_SESSIONS",
+    "KCODE_FLUSH_ENABLED",
+    "KCODE_FLUSH_EVERY_TURNS",
+    "KCODE_FLUSH_INTERVAL_SECONDS",
+    "KCODE_FLUSH_TOKEN_THRESHOLD",
+    "KCODE_PROGRESS_FILE",
+    "KCODE_PRUNE_ENABLED",
+    "KCODE_PRUNE_MIN_BYTES",
+    "KCODE_PRUNE_REPEATED_THRESHOLD",
+    "KCODE_PRUNE_SKELETON",
+    "KCODE_PRUNE_CACHE_PATH",
+    "KCODE_PARALLEL_TOOLS_ENABLED",
+    "KCODE_PARALLEL_TOOLS_MAX_CONCURRENCY",
+    "KCODE_PARALLEL_TOOLS_READ_ONLY_TOOLS",
     "KCODE_AMBIENT_ENABLED",
     "KCODE_AMBIENT_MAX_INTERVAL",
     "KCODE_AMBIENT_MIN_INTERVAL",
@@ -716,6 +730,19 @@ pub struct Config {
 
     /// Compaction configuration
     pub compaction: CompactionConfig,
+
+    /// Periodic progress-flush nudges for long-running turns
+    pub progress: ProgressConfig,
+
+    /// Deterministic, byte-stable context compression (fork of
+    /// `context-prune`) at the file-read and tool-output stages. Disabled by
+    /// default: `enabled = false` is a byte-for-byte no-op.
+    pub context_prune: ContextPruneConfig,
+
+    /// Harness-side parallel execution of independent read-only tool calls.
+    /// Disabled by default: `enabled = false` takes the exact sequential code
+    /// path kcode always took.
+    pub parallel_tools: ParallelToolsConfig,
 
     /// Power-management configuration (prevent sleep while streaming)
     pub power: PowerConfig,

@@ -1612,6 +1612,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
+name = "context-prune"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tree-sitter",
+ "tree-sitter-rust 0.24.2",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3898,6 +3911,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "context-prune",
  "core-graphics",
  "dirs",
  "flate2",
@@ -4194,7 +4208,7 @@ dependencies = [
  "thiserror 2.0.19",
  "tokio",
  "tree-sitter",
- "tree-sitter-rust",
+ "tree-sitter-rust 0.23.3",
 ]
 
 [[package]]
@@ -4826,7 +4840,7 @@ dependencies = [
  "thiserror 2.0.19",
  "tokio",
  "tree-sitter",
- "tree-sitter-rust",
+ "tree-sitter-rust 0.23.3",
 ]
 
 [[package]]
@@ -9529,6 +9543,16 @@ name = "tree-sitter-rust"
 version = "0.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca8ccb3e3a3495c8a943f6c3fd24c3804c471fd7f4f16087623c7fa4c0068e8a"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-rust"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "439e577dbe07423ec2582ac62c7531120dbfccfa6e5f92406f93dd271a120e45"
 dependencies = [
  "cc",
  "tree-sitter-language",
